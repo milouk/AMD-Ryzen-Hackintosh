@@ -1534,7 +1534,7 @@
 					 alcid=1      = AppleALC layout-id (change to match your codec)
 				-->
 				<key>boot-args</key>
-				<string>-v debug=0x100 keepsyms=1 alcid=1 shikigva=128</string>
+				<string>-v debug=0x100 keepsyms=1 alcid=1 shikigva=128 -radcodec revpatch=sbvmm</string>
 				<!-- csr-active-config: 00000000 = SIP fully enabled per Dortania -->
 				<key>csr-active-config</key>
 				<data>AAAAAA==</data>
