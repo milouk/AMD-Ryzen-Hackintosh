@@ -400,6 +400,25 @@
 				<key>PlistPath</key>
 				<string>Contents/Info.plist</string>
 			</dict>
+			<!-- 13. SMCRadeonSensors - GPU temperature monitoring (ChefKissInc) -->
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>SMCRadeonSensors.kext</string>
+				<key>Comment</key>
+				<string>AMD GPU temperature monitoring via VirtualSMC</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/SMCRadeonSensors</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string></string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
 		</array>
 		<key>Block</key>
 		<array>
@@ -1514,7 +1533,7 @@
 					 alcid=1      = AppleALC layout-id (change to match your codec)
 				-->
 				<key>boot-args</key>
-				<string>-v debug=0x100 keepsyms=1 alcid=1</string>
+				<string>-v debug=0x100 keepsyms=1 alcid=1 shikigva=128</string>
 				<!-- csr-active-config: 00000000 = SIP fully enabled per Dortania -->
 				<key>csr-active-config</key>
 				<data>AAAAAA==</data>
