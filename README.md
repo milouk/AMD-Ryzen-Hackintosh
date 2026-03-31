@@ -16,10 +16,10 @@
 | RAM | 16GB (2 x 8GB) Crucial Ballistix @ 3200MHz |
 | Audio Chipset | Realtek ALC892 |
 | GPU | RX 460 (Polaris) |
-| WiFi & Bluetooth | BCM94360CD (native Apple chipset) |
-| Ethernet | Realtek RTL8111 |
-| macOS Disk | SATA SSD |
-| Windows Disk | Kingston A400 256GB NVMe |
+| WiFi & Bluetooth | BCM94360CD recommended (native Apple chipset, no kexts needed) |
+| Ethernet | Realtek RTL8111 (onboard) |
+| macOS Disk | Kingston A400 256GB SATA SSD |
+| Windows Disk | XPG 1TB NVMe |
 
 **macOS version**: Sequoia 15
 

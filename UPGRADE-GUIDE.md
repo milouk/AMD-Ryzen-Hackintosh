@@ -1,7 +1,11 @@
 # Upgrade Guide: Catalina (OC 0.6.3) -> Sequoia (OC 1.0.6)
 
-Hardware: Ryzen 2700 | MSI B450M Mortar Max | RX 460 | BCM94360CD (future WiFi card)
-Dual-boot: macOS (SATA) + Windows (NVMe)
+Hardware: Ryzen 2700 | MSI B450M Mortar Max | RX 460 | BCM94331CD (upgrade to BCM94360CD planned)
+Dual-boot: macOS (Kingston A400 256GB SATA SSD) + Windows (XPG 1TB NVMe)
+
+**Optional: Swap drives during upgrade** — The clean install in Phase 5 is the
+perfect time to move macOS to the faster XPG NVMe and Windows to the Kingston
+SATA. See Phase 5.3 for details.
 
 **You can do this entire upgrade on ethernet only.** The WiFi card swap
 (BCM94331CD -> BCM94360CD) can happen later — it's completely independent.
@@ -511,26 +515,52 @@ the drive you explicitly select.
   - Disk Utility
   - Terminal
 
-### 5.3 Erase your macOS SATA drive
+### 5.3 Erase and install — choose your target drive
 
-**BE VERY CAREFUL HERE — select the right drive!** Your Windows is on the
-NVMe. Your macOS is on the SATA drive. You only want to erase the SATA drive.
+**BE VERY CAREFUL HERE — identify each drive correctly!**
+
+Your current drive layout:
+- **Kingston A400 256GB** (SATA SSD) — currently has macOS Catalina
+- **XPG 1TB** (NVMe) — currently has Windows
+
+You have two options:
+
+**Option A: Keep current layout** (macOS on SATA, Windows on NVMe)
+- Erase only the Kingston SATA drive
+- Simpler, Windows stays untouched
+
+**Option B: Swap drives** (macOS on NVMe, Windows on SATA) — RECOMMENDED
+- Install Sequoia on the XPG NVMe (much faster boot and app loading)
+- Reinstall Windows on the Kingston SATA later
+- This is the ideal time to swap since you're doing a clean install anyway
+- **Back up your Windows data first!** The NVMe will be erased.
+
+**For either option:**
 
 1. Click **Disk Utility** and click Continue
 2. In Disk Utility, click **View** > **Show All Devices** (top-left dropdown)
 3. In the left sidebar, you'll see all your drives:
-   - One will be your NVMe (Windows) — probably labeled "KINGSTON" or similar
-     with an NTFS partition
-   - One will be your SATA drive (macOS) — this is the one to erase
-   - One will be the USB installer
-4. **Select your SATA drive's ROOT device** (the physical disk name, not a
-   partition under it)
+   - **XPG** or **ADATA** — this is your 1TB NVMe (currently Windows)
+   - **KINGSTON** — this is your 256GB SATA (currently macOS Catalina)
+   - The USB installer
+4. **Select your target drive's ROOT device** (the physical disk name, not a
+   partition under it):
+   - Option A: select the **Kingston** (SATA)
+   - Option B: select the **XPG** (NVMe) — make sure Windows is backed up!
 5. Click **Erase** with these settings:
    - Name: `Macintosh HD` (or whatever you prefer)
    - Format: **APFS**
    - Scheme: **GUID Partition Map**
 6. Click **Erase**
 7. Wait for it to finish, then close Disk Utility
+
+**If you chose Option B** (swap drives), after Sequoia is fully set up,
+you'll need to reinstall Windows on the Kingston SATA:
+1. Create a Windows USB installer (use Microsoft's Media Creation Tool from
+   another PC, or use the old Windows install on NVMe before erasing)
+2. Boot from the Windows USB
+3. Install Windows on the Kingston SATA drive
+4. Both OSes will appear in the OpenCanopy picker
 
 ### 5.4 Install macOS Sequoia
 

@@ -4,7 +4,8 @@
 <dict>
 	<!--
 		OpenCore 1.0.6 config.plist for Ryzentosh
-		Hardware: Ryzen 2700 (8-core) | MSI B450M Mortar Max | RX 460 | BCM94360CD WiFi
+		Hardware: Ryzen 2700 (8-core) | MSI B450M Mortar Max | RX 460 | BCM94360CD WiFi (or BCM94331CD with ethernet fallback)
+		Storage: macOS on SATA SSD | Windows on NVMe (dual-boot)
 		Target: macOS Sequoia 15
 
 		Based on: OC 1.0.6 Sample.plist + Dortania AMD Zen guide + AMD_Vanilla patches
