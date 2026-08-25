@@ -3,13 +3,19 @@
 <plist version="1.0">
 <dict>
 	<!--
-		OpenCore 1.0.6 config.plist for Ryzentosh
-		Hardware: Ryzen 2700 (8-core) | MSI B450M Mortar Max | RX 460 | BCM94360CD WiFi (or BCM94331CD with ethernet fallback)
-		Storage: macOS on SATA SSD | Windows on NVMe (dual-boot)
+		OpenCore 1.0.7 config.plist for Ryzentosh
+		Hardware: Ryzen 2700 (8-core) | MSI B450M Mortar Max | RX 460 | BCM943602CS WiFi+BT
+		Storage: macOS on XPG SX8200 Pro 256GB NVMe (M2_1) | Windows on Crucial P310 500GB (M2_2)
+		         SX8200 Pro = SM2262EN, TLC, has DRAM cache -> the better macOS boot drive.
+		         P310 500GB = Phison E27T, QLC, DRAM-less, needs HMB (which macOS lacks).
 		Target: macOS Sequoia 15
 
-		Based on: OC 1.0.6 Sample.plist + Dortania AMD Zen guide + AMD_Vanilla patches
-		SMBIOS values (MLB, Serial, UUID, ROM) are PLACEHOLDERS - generate with GenSMBIOS!
+		Based on: OC 1.0.7 Sample.plist + Dortania AMD Zen guide + AMD_Vanilla patches
+
+		!!! Two things MUST be done before this config will boot as intended:
+		    1. SMBIOS values (MLB, Serial, UUID, ROM) are PLACEHOLDERS - generate with GenSMBIOS
+		    2. Run ./tools/fetch-wifi-kexts.sh - the Broadcom Wi-Fi kexts are not in this repo,
+		       and Kernel > Block excludes Apple's IOSkywalkFamily on the assumption they exist
 	-->
 	<key>ACPI</key>
 	<dict>
@@ -344,14 +350,16 @@
 				<key>PlistPath</key>
 				<string>Contents/Info.plist</string>
 			</dict>
-			<!-- 10. NVMeFix - Optional, if you have NVMe storage (per Dortania ktext.html) -->
+			<!-- 10. NVMeFix - now the boot drive is NVMe, this is required, not optional.
+				 Fixes NVMe power management (APST) and autonomous power state transitions,
+				 without which sleep/wake on a third-party NVMe is unreliable. -->
 			<dict>
 				<key>Arch</key>
 				<string>x86_64</string>
 				<key>BundlePath</key>
 				<string>NVMeFix.kext</string>
 				<key>Comment</key>
-				<string>NVMe power management fix</string>
+				<string>NVMe power management fix - required, macOS boots from NVMe</string>
 				<key>Enabled</key>
 				<true/>
 				<key>ExecutablePath</key>
@@ -370,7 +378,7 @@
 				<key>BundlePath</key>
 				<string>BlueToolFixup.kext</string>
 				<key>Comment</key>
-				<string>Bluetooth fix for macOS 12+ - required for BCM94360CD on hackintosh</string>
+				<string>Bluetooth fix for macOS 12+ - required for BCM943602CS on hackintosh</string>
 				<key>Enabled</key>
 				<true/>
 				<key>ExecutablePath</key>
@@ -420,10 +428,100 @@
 				<key>PlistPath</key>
 				<string>Contents/Info.plist</string>
 			</dict>
+			<!--
+				=== Broadcom Wi-Fi restoration (entries 14-17) ===
+
+				Apple removed IO80211FamilyLegacy.kext in macOS Sequoia, which is what broke
+				Wi-Fi for every Broadcom card - BCM943602CS included. Bluetooth is unaffected
+				(that is BlueToolFixup, entry 11). The fix is to block Apple's IOSkywalkFamily
+				(see Kernel > Block) and inject the Ventura-era networking stack in its place.
+
+				AirPortBrcmNIC matches pci14e4,43ba = BCM43602 = the chip on the BCM943602CS.
+
+				These four bundles are NOT in the repo - run ./tools/fetch-wifi-kexts.sh first.
+				MinKernel 23.0.0 scopes all of this to Sonoma+ so it stays inert if you boot
+				an older macOS (e.g. testing this EFI against the outgoing Catalina install).
+			-->
+			<!-- 14. AMFIPass - satisfies AMFI for the injected Apple kexts -->
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>AMFIPass.kext</string>
+				<key>Comment</key>
+				<string>AMFI bypass for injected Wi-Fi kexts</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/AMFIPass</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string>23.0.0</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<!-- 15. IOSkywalkFamily - Ventura version, replaces the blocked Sequoia one -->
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>IOSkywalkFamily.kext</string>
+				<key>Comment</key>
+				<string>Downgraded IOSkywalkFamily for Broadcom Wi-Fi</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/IOSkywalkFamily</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string>23.0.0</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<!-- 16. IO80211FamilyLegacy - the family Apple deleted in Sequoia -->
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>IO80211FamilyLegacy.kext</string>
+				<key>Comment</key>
+				<string>Legacy 802.11 family removed by Apple in Sequoia</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/IO80211FamilyLegacy</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string>23.0.0</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<!-- 17. AirPortBrcmNIC - plugin of 16, the actual BCM43602 driver -->
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>IO80211FamilyLegacy.kext/Contents/PlugIns/AirPortBrcmNIC.kext</string>
+				<key>Comment</key>
+				<string>Broadcom Wi-Fi driver - matches pci14e4,43ba (BCM43602)</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/AirPortBrcmNIC</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string>23.0.0</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
 		</array>
 		<key>Block</key>
 		<array>
-			<!-- From OC 1.0.6 Sample.plist - leave disabled -->
+			<!-- Not needed: AppleMCEReporterDisabler.kext (Kernel > Add) already covers AMD -->
 			<dict>
 				<key>Arch</key>
 				<string>Any</string>
@@ -440,13 +538,24 @@
 				<key>Strategy</key>
 				<string>Disable</string>
 			</dict>
+			<!--
+				Excludes Sequoia's IOSkywalkFamily so the injected Ventura one (Kernel > Add
+				entry 15) loads instead. Without this the downgraded stack is ignored and
+				Broadcom Wi-Fi stays dead.
+
+				!!! This is only safe while IOSkywalkFamily.kext + IO80211FamilyLegacy.kext
+				    are actually present in EFI/OC/Kexts. If you cloned this repo and have
+				    not run ./tools/fetch-wifi-kexts.sh, set this back to false - otherwise
+				    you block Apple's stack with nothing to replace it. Ethernet still works
+				    either way (RealtekRTL8111 does not use Skywalk), you just lose Wi-Fi.
+			-->
 			<dict>
 				<key>Arch</key>
 				<string>x86_64</string>
 				<key>Comment</key>
-				<string></string>
+				<string>Block Sequoia IOSkywalkFamily in favour of the injected Ventura build</string>
 				<key>Enabled</key>
-				<false/>
+				<true/>
 				<key>Identifier</key>
 				<string>com.apple.iokit.IOSkywalkFamily</string>
 				<key>MaxKernel</key>
@@ -1450,8 +1559,15 @@
 			<!-- ScanPolicy: 0 to allow all drives including USB - needed for dual boot -->
 			<key>ScanPolicy</key>
 			<integer>0</integer>
+			<!--
+				SecureBootModel: Disabled (was Default).
+				Apple Secure Boot refuses to boot with the downgraded Apple networking kexts
+				injected, so restoring Broadcom Wi-Fi on Sequoia requires turning it off.
+				If you ever drop the Wi-Fi patch (Kernel > Block + entries 14-17) and go
+				Ethernet-only, set this back to Default and csr-active-config back to zeroes.
+			-->
 			<key>SecureBootModel</key>
-			<string>Default</string>
+			<string>Disabled</string>
 			<!-- Vault: Optional per Dortania guide -->
 			<key>Vault</key>
 			<string>Optional</string>
@@ -1527,17 +1643,34 @@
 			</dict>
 			<key>7C436110-AB2A-4BBB-A880-FE41995C9F82</key>
 			<dict>
-				<!-- boot-args per Dortania AMD Zen guide:
-					 -v           = verbose mode (remove once stable)
-					 debug=0x100  = disables watchdog, prevents reboot on panic
-					 keepsyms=1   = prints symbols on kernel panic
-					 alcid=1      = AppleALC layout-id (change to match your codec)
+				<!-- boot-args:
+					 -v                  = verbose mode (remove once stable)
+					 debug=0x100         = disables watchdog, prevents reboot on panic
+					 keepsyms=1          = prints symbols on kernel panic
+					 alcid=1             = AppleALC layout-id (change to match your codec)
+					 shikigva=128        = AMD DRM decoder on IGPU-free MacPro7,1 (10.15 only,
+					                       inert on macOS 11+; kept for the Catalina test boot)
+					 -radcodec           = force spoofed PID in AMDRadeonVADriver
+					 revpatch=pci,cpuname = RestrictEvents: suppress the MacPro7,1 PCI/RAM
+					                       configuration warnings and set the CPU brand string.
+
+					 NOTE: this was previously revpatch=sbvmm, which was wrong twice over.
+					 sbvmm forces the VMM Secure Boot model to allow OTA updates on models
+					 macOS does not support - but MacPro7,1 IS supported on Sequoia, so it
+					 bought nothing, and because revpatch is an explicit list it silently
+					 replaced the default "auto" (memtab,pci,cpuname). That left the MacPro7,1
+					 PCI configuration nag switched on.
 				-->
 				<key>boot-args</key>
-				<string>-v debug=0x100 keepsyms=1 alcid=1 shikigva=128 -radcodec revpatch=sbvmm</string>
-				<!-- csr-active-config: 00000000 = SIP fully enabled per Dortania -->
+				<string>-v debug=0x100 keepsyms=1 alcid=1 shikigva=128 -radcodec revpatch=pci,cpuname</string>
+				<!--
+					csr-active-config: 03080000 = partial SIP (was 00000000, fully enabled).
+					Bits: ALLOW_UNTRUSTED_KEXTS | ALLOW_UNRESTRICTED_FS | ALLOW_UNAPPROVED_KEXTS.
+					Required by the Broadcom Wi-Fi restoration. Revert to AAAAAA== if you
+					drop the Wi-Fi patch and run Ethernet-only.
+				-->
 				<key>csr-active-config</key>
-				<data>AAAAAA==</data>
+				<data>AwgAAA==</data>
 				<key>prev-lang:kbd</key>
 				<data>ZW4tVVM6MA==</data>
 				<!-- run-efi-updater: No - prevents Apple firmware updates per Dortania -->
@@ -1562,6 +1695,12 @@
 			<key>7C436110-AB2A-4BBB-A880-FE41995C9F82</key>
 			<array>
 				<string>boot-args</string>
+				<!--
+					csr-active-config must be deleted before it is added, otherwise NVRAM > Add
+					is a no-op against the value macOS/csrutil already wrote and the SIP level
+					the Wi-Fi patch depends on never takes effect.
+				-->
+				<string>csr-active-config</string>
 				<string>ForceDisplayRotationInEFI</string>
 			</array>
 		</dict>
