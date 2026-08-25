@@ -1,0 +1,154 @@
+name: Publish public mirror
+
+# Replaces running `tools/sync-repos.sh --to-public` by hand.
+#
+# Takes the private working repo, strips the real SMBIOS and Apple's Wi-Fi kexts
+# out of it, and pushes the result to the public mirror.
+#
+# The job is a no-op anywhere except the private repo, so the workflow can be
+# synced to both without the public mirror trying to publish to itself.
+#
+# Auth is a deploy key rather than a PAT. A deploy key is bound to exactly one
+# repository, so if this secret ever leaked it could write to the public mirror
+# and nothing else — no other repo, no gists, no account access. A PAT with
+# Contents:write is broader than this job needs.
+#
+# Requires secret MIRROR_DEPLOY_KEY: the private half of an ed25519 keypair whose
+# public half is installed on milouk/AMD-Ryzen-Hackintosh as a read-write deploy
+# key. Recreate with:
+#   ssh-keygen -t ed25519 -N '' -f k -C 'mirror-publish@My-Ryzentosh-Actions'
+#   gh repo deploy-key add k.pub --repo milouk/AMD-Ryzen-Hackintosh --allow-write
+#   gh secret set MIRROR_DEPLOY_KEY --repo milouk/My-Ryzentosh < k && rm k k.pub
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'EFI/**'
+      - 'tools/**'
+      - 'UPGRADE-GUIDE.md'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Sanitize and audit, but do not push'
+        type: boolean
+        default: false
+
+env:
+  PRIVATE_REPO: milouk/My-Ryzentosh
+  PUBLIC_REPO: milouk/AMD-Ryzen-Hackintosh
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    if: github.repository == 'milouk/My-Ryzentosh'
+    steps:
+      - name: Check out the private repo
+        uses: actions/checkout@v4
+        with:
+          path: private
+
+      - name: Check out the public mirror
+        uses: actions/checkout@v4
+        with:
+          repository: milouk/AMD-Ryzen-Hackintosh
+          ssh-key: ${{ secrets.MIRROR_DEPLOY_KEY }}
+          path: public
+
+      - name: Stage a sanitized copy
+        run: |
+          rsync -a --delete \
+            --exclude '.git/' --exclude 'tools/.cache/' --exclude 'tools/.backups/' \
+            private/ staging/
+          ./private/tools/sanitize-for-public.sh staging
+
+      # sanitize-for-public.sh already exits non-zero on any leak. This is a
+      # second, independent check so a bug in the sanitizer cannot publish
+      # secrets on its own — belt and braces on the one step that matters.
+      - name: Independent leak audit
+        run: |
+          python3 - <<'PY'
+          import plistlib, pathlib, sys
+
+          cfg = plistlib.load(open('staging/EFI/OC/config.plist', 'rb'))
+          g = cfg['PlatformInfo']['Generic']
+          problems = []
+
+          if g['SystemSerialNumber'] != 'W00000000001':
+              problems.append(f"serial is {g['SystemSerialNumber']!r}, not the placeholder")
+          if g['MLB'] != 'M0000000000000001':
+              problems.append(f"MLB is {g['MLB']!r}, not the placeholder")
+          if g['SystemUUID'] != '00000000-0000-0000-0000-000000000000':
+              problems.append(f"UUID is {g['SystemUUID']!r}, not the placeholder")
+          if g['ROM'] != bytes.fromhex('112233445566'):
+              problems.append("ROM is not the placeholder")
+
+          for kext in ('AMFIPass.kext', 'IOSkywalkFamily.kext', 'IO80211FamilyLegacy.kext'):
+              if pathlib.Path('staging/EFI/OC/Kexts', kext).exists():
+                  problems.append(f"{kext} would be published")
+
+          if problems:
+              print("REFUSING TO PUBLISH:")
+              for p in problems:
+                  print("  -", p)
+              sys.exit(1)
+          print("audit clean")
+          PY
+
+      - name: Validate the sanitized config
+        run: |
+          curl -fsSL --retry 3 -o oc.zip \
+            "https://github.com/acidanthera/OpenCorePkg/releases/download/1.0.7/OpenCore-1.0.7-RELEASE.zip"
+          unzip -q oc.zip -d oc
+          chmod +x oc/Utilities/ocvalidate/ocvalidate.linux
+          ./oc/Utilities/ocvalidate/ocvalidate.linux staging/EFI/OC/config.plist
+
+      - name: Copy into the mirror
+        run: |
+          # --delete keeps the mirror honest about removed files, but it would
+          # also wipe anything that legitimately exists only in the public repo.
+          # Everything public-only must be listed here or it will be deleted:
+          #   README.md      the two repos deliberately have different ones
+          #   screenshot.png published for the public README, absent privately
+          # Add to this list when you add a public-only asset.
+          rsync -a --delete \
+            --exclude '.git/' \
+            --exclude 'README.md' \
+            --exclude 'screenshot.png' \
+            --exclude 'tools/.cache/' --exclude 'tools/.backups/' \
+            staging/ public/
+
+      - name: Public-only assets survived
+        working-directory: public
+        run: |
+          fail=0
+          for f in README.md screenshot.png; do
+            if [ -e "$f" ]; then echo "OK    $f"; else echo "LOST  $f"; fail=1; fi
+          done
+          exit $fail
+
+      - name: Commit and push
+        if: ${{ !inputs.dry_run }}
+        working-directory: public
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Mirror already up to date — nothing to push."
+            exit 0
+          fi
+          git commit -m "Sync from private working repo
+
+          Mirrors ${PRIVATE_REPO}@${GITHUB_SHA:0:7}. SMBIOS is replaced with
+          placeholders and the Apple Wi-Fi kexts are omitted; run
+          tools/fetch-wifi-kexts.sh to restore those locally."
+          git push
+
+      - name: Dry run summary
+        if: ${{ inputs.dry_run }}
+        working-directory: public
+        run: |
+          echo "Dry run — these changes would have been pushed:"
+          git status --short
