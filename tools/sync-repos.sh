@@ -135,6 +135,18 @@ cp -R "$SRC/EFI" "$DST/EFI"
 # public repo excludes the Apple Wi-Fi kexts because it must not redistribute
 # them, while the private repo tracks them so a clone is complete.
 
+# The mirror's README is the project's real documentation and is authored in the
+# private repo at docs/README.public.md, separately from that repo's own short
+# README. Keep the two directions symmetric with publish-mirror.yml.
+if [ "$DIRECTION" = to-public ] && [ -f "$SRC/docs/README.public.md" ]; then
+	cp "$SRC/docs/README.public.md" "$DST/README.md"
+	echo "  README published from docs/README.public.md"
+elif [ "$DIRECTION" = to-working ] && [ -f "$SRC/README.md" ]; then
+	mkdir -p "$DST/docs"
+	cp "$SRC/README.md" "$DST/docs/README.public.md"
+	echo "  public README captured to docs/README.public.md"
+fi
+
 # Tool caches and backups are machine-local; never propagate them.
 rm -rf "$DST/tools/.cache" "$DST/tools/.backups"
 

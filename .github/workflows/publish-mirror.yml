@@ -109,15 +109,30 @@ jobs:
           # --delete keeps the mirror honest about removed files, but it would
           # also wipe anything that legitimately exists only in the public repo.
           # Everything public-only must be listed here or it will be deleted:
-          #   README.md      the two repos deliberately have different ones
+          #   README.md      handled separately below — the private repo's own
+          #                  README is a short specs list, not the public docs
           #   screenshot.png published for the public README, absent privately
           # Add to this list when you add a public-only asset.
           rsync -a --delete \
             --exclude '.git/' \
             --exclude 'README.md' \
             --exclude 'screenshot.png' \
+            --exclude 'docs/README.public.md' \
             --exclude 'tools/.cache/' --exclude 'tools/.backups/' \
             staging/ public/
+
+      - name: Publish the public README
+        run: |
+          # The mirror's README is the project's real documentation, so it has to
+          # be updatable by this workflow — but it is not the private repo's own
+          # README. It is authored at docs/README.public.md and lands as README.md
+          # here. Without this the public docs could never be updated by CI.
+          if [ ! -f staging/docs/README.public.md ]; then
+            echo "::error::docs/README.public.md is missing — the mirror README would go stale"
+            exit 1
+          fi
+          cp staging/docs/README.public.md public/README.md
+          echo "README published from docs/README.public.md"
 
       - name: Public-only assets survived
         working-directory: public
