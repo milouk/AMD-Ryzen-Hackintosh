@@ -1,0 +1,62 @@
+name: Validate EFI
+
+# Runs in both repos. Two things are worth catching automatically:
+#   - config.plist drifting out of spec for the OpenCore version we ship
+#   - the OCLP payload URLs that fetch-wifi-kexts.sh depends on going stale,
+#     which would otherwise only surface when someone tries to build the EFI
+
+on:
+  push:
+    paths:
+      - 'EFI/**'
+      - 'tools/**'
+      - '.github/workflows/validate.yml'
+  pull_request:
+  workflow_dispatch:
+
+env:
+  OC_VERSION: 1.0.7
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch the Broadcom Wi-Fi kexts
+        # The public repo does not track these, so pull them before verifying.
+        # If OCLP moves or renames the payloads, this is where we find out.
+        run: ./tools/fetch-wifi-kexts.sh
+
+      - name: Fetch OpenCore ${{ env.OC_VERSION }} utilities
+        run: |
+          curl -fsSL --retry 3 -o oc.zip \
+            "https://github.com/acidanthera/OpenCorePkg/releases/download/${OC_VERSION}/OpenCore-${OC_VERSION}-RELEASE.zip"
+          unzip -q oc.zip -d oc
+          chmod +x oc/Utilities/ocvalidate/ocvalidate.linux
+
+      - name: config.plist is well-formed
+        run: python3 -c "import plistlib,sys; plistlib.load(open('EFI/OC/config.plist','rb')); print('plist OK')"
+
+      - name: ocvalidate
+        run: ./oc/Utilities/ocvalidate/ocvalidate.linux EFI/OC/config.plist
+
+      - name: Shipped binaries match the official OpenCore release
+        run: |
+          fail=0
+          for f in BOOT/BOOTx64.efi OC/OpenCore.efi OC/Drivers/OpenRuntime.efi \
+                   OC/Drivers/OpenCanopy.efi OC/Drivers/ResetNvramEntry.efi; do
+            if cmp -s "EFI/$f" "oc/X64/EFI/$f"; then
+              echo "OK    $f"
+            else
+              echo "DIFF  $f  (not from the official ${OC_VERSION} package)"
+              fail=1
+            fi
+          done
+          exit $fail
+
+      - name: verify-efi
+        run: ./tools/verify-efi.sh
+
+      - name: Shell scripts parse
+        run: for f in tools/*.sh; do sh -n "$f" || exit 1; done; echo "all tools parse"

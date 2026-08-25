@@ -1,1 +1,18 @@
 .DS_Store
+
+# Broadcom Wi-Fi restoration kexts.
+# IO80211FamilyLegacy.kext (with its AirPortBrcmNIC plugin) and IOSkywalkFamily.kext
+# are Apple binaries lifted from macOS Ventura, so they are not redistributed here.
+# Run ./tools/fetch-wifi-kexts.sh to pull all three from the OpenCore Legacy Patcher
+# payloads before copying EFI/ to your EFI partition.
+EFI/OC/Kexts/AMFIPass.kext/
+EFI/OC/Kexts/IOSkywalkFamily.kext/
+EFI/OC/Kexts/IO80211FamilyLegacy.kext/
+
+# Tool working directories: downloaded OpenCore utilities, recovery images, and
+# EFI backups taken by install-efi.sh. All reproducible or machine-specific.
+tools/.cache/
+tools/.backups/
+
+# Never commit a config.plist carrying real SMBIOS values.
+*.bak-*
