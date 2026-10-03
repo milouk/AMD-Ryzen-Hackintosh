@@ -134,7 +134,12 @@ if [ -d "$MP/EFI" ]; then
 		mkdir -p "$BACKUP_DIR"
 		echo "Backing up existing EFI -> $ARCHIVE"
 		# FAT has no extended attributes; macOS fakes them as ._ files. Leave those out.
-		COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata --exclude "._*" --exclude ".DS_Store" \
+		# The flags that say so outright are missing from older bsdtar (Catalina).
+		TAR_FLAGS=""
+		if tar --no-xattrs --no-mac-metadata -cf /dev/null -T /dev/null 2>/dev/null; then
+			TAR_FLAGS="--no-xattrs --no-mac-metadata"
+		fi
+		COPYFILE_DISABLE=1 tar $TAR_FLAGS --exclude "._*" --exclude ".DS_Store" \
 			-czf "$ARCHIVE" -C "$MP" EFI
 		# An archive nobody has tried to restore is a hope, not a backup.
 		mkdir "$TMP/backup-check"
@@ -193,6 +198,16 @@ except Exception as e:
 serial = live.get('SystemSerialNumber', '')
 if not serial or serial == placeholder:
     print("  existing config has placeholder SMBIOS — nothing to carry over")
+    sys.exit(0)
+
+# A serial encodes the Mac model. Carrying one across a model change (the old
+# iMacPro1,1 EFI to this MacPro7,1 one) would produce an identity Apple rejects.
+new_model = plistlib.load(open(new_path, 'rb'))['PlatformInfo']['Generic'].get('SystemProductName', '')
+live_model = live.get('SystemProductName', '')
+if live_model != new_model:
+    print(f"  existing EFI is {live_model or 'an unknown model'}, this one is {new_model} — "
+          "its serial does not apply,")
+    print("  so SMBIOS is NOT carried over; the repo config's own values are used")
     sys.exit(0)
 
 # Text-level edit, like apply-smbios.sh, so the config's comments survive.
