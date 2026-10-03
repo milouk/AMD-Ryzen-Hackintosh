@@ -1071,7 +1071,7 @@ separate USB-attached device and is unaffected.
 The workaround, already configured in this EFI:
 
 1. `Kernel` > `Block` excludes Sequoia's `com.apple.iokit.IOSkywalkFamily`
-2. `Kernel` > `Add` entries 14–17 inject the Ventura stack in its place:
+2. `Kernel` > `Add` entries 15–18 inject the Ventura stack in its place:
    `AMFIPass` + `IOSkywalkFamily` + `IO80211FamilyLegacy` (whose
    `AirPortBrcmNIC` plugin is the actual driver)
 3. `SecureBootModel` is `Disabled` and `csr-active-config` is `03080000`,
@@ -1244,7 +1244,7 @@ working Bluetooth and Ethernet:
 
 | Setting | Patched value | Revert to |
 |---|---|---|
-| `Kernel` > `Add` entries 14–17 | Enabled | Disabled (or delete) |
+| `Kernel` > `Add` entries 15–18 | Enabled | Disabled (or delete) |
 | `Kernel` > `Block` IOSkywalkFamily | Enabled | Disabled |
 | `Misc` > `Security` > `SecureBootModel` | `Disabled` | `Default` |
 | `NVRAM` > `csr-active-config` | `03080000` | `00000000` |

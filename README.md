@@ -87,7 +87,7 @@ Modern Wireless**) if WiFi still does not appear after injection, and it has to 
 re-applied after every macOS update. This is the ongoing maintenance cost of
 Broadcom WiFi on Sequoia.
 
-> If you would rather keep Secure Boot and full SIP: delete kext entries 14–17,
+> If you would rather keep Secure Boot and full SIP: delete kext entries 15–18,
 > disable the `IOSkywalkFamily` block, set `SecureBootModel` back to `Default` and
 > `csr-active-config` back to `00000000`. You keep Bluetooth and lose WiFi, and the
 > machine runs on Ethernet. An Intel AX210 with AirportItlwm is the other route —
@@ -99,6 +99,7 @@ Broadcom WiFi on Sequoia.
 |------|---------|---------|
 | [Lilu](https://github.com/acidanthera/Lilu) | 1.7.2 | Core patching engine |
 | [VirtualSMC](https://github.com/acidanthera/VirtualSMC) | 1.3.7 | SMC emulation |
+| [SMCSuperIO](https://github.com/acidanthera/VirtualSMC) | 1.3.7 | Motherboard fan speeds (VirtualSMC plugin, Nuvoton NCT6797D) |
 | [WhateverGreen](https://github.com/acidanthera/WhateverGreen) | 1.7.0 | GPU patching |
 | [AppleALC](https://github.com/acidanthera/AppleALC) | 1.9.7 | Audio patching |
 | [RealtekRTL8111](https://github.com/Mieze/RTL8111_driver_for_OS_X) | 3.0.0 | Ethernet |

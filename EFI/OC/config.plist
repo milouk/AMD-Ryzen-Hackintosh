@@ -216,6 +216,28 @@
 				<key>PlistPath</key>
 				<string>Contents/Info.plist</string>
 			</dict>
+			<!-- 2b. SMCSuperIO - VirtualSMC plugin: motherboard fan speeds from the Super I/O chip.
+			     MSI B450 boards carry a Nuvoton NCT6797D, which it supports. Must load after
+			     VirtualSMC and come from the same VirtualSMC release. If it finds no chip it
+			     publishes nothing; it is safe to disable. -->
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>SMCSuperIO.kext</string>
+				<key>Comment</key>
+				<string>Fan speed sensors (Super I/O)</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/SMCSuperIO</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string></string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
 			<!-- 3. WhateverGreen - GPU patches (from OC 1.0.6 Sample.plist) -->
 			<dict>
 				<key>Arch</key>
@@ -429,7 +451,7 @@
 				<string>Contents/Info.plist</string>
 			</dict>
 			<!--
-				=== Broadcom Wi-Fi restoration (entries 14-17) ===
+				=== Broadcom Wi-Fi restoration (entries 15-18) ===
 
 				Apple removed IO80211FamilyLegacy.kext in macOS Sequoia, which is what broke
 				Wi-Fi for every Broadcom card - BCM943602CS included. Bluetooth is unaffected
@@ -1563,7 +1585,7 @@
 				SecureBootModel: Disabled (was Default).
 				Apple Secure Boot refuses to boot with the downgraded Apple networking kexts
 				injected, so restoring Broadcom Wi-Fi on Sequoia requires turning it off.
-				If you ever drop the Wi-Fi patch (Kernel > Block + entries 14-17) and go
+				If you ever drop the Wi-Fi patch (Kernel > Block + entries 15-18) and go
 				Ethernet-only, set this back to Default and csr-active-config back to zeroes.
 			-->
 			<key>SecureBootModel</key>
