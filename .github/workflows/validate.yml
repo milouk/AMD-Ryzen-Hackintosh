@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 env:
-  OC_VERSION: 1.0.7
+  OC_VERSION: 1.0.8
 
 jobs:
   validate:
@@ -45,7 +45,8 @@ jobs:
         run: |
           fail=0
           for f in BOOT/BOOTx64.efi OC/OpenCore.efi OC/Drivers/OpenRuntime.efi \
-                   OC/Drivers/OpenCanopy.efi OC/Drivers/ResetNvramEntry.efi; do
+                   OC/Drivers/OpenCanopy.efi OC/Drivers/ResetNvramEntry.efi \
+                   OC/Tools/OpenShell.efi OC/Tools/ResetSystem.efi; do
             if cmp -s "EFI/$f" "oc/X64/EFI/$f"; then
               echo "OK    $f"
             else

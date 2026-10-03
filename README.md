@@ -2,7 +2,7 @@
 
 
 [![macOS version](https://img.shields.io/badge/macOS-Sequoia_15-informational.svg)](https://www.apple.com/macos)
-[![OpenCore version](https://img.shields.io/badge/OpenCore-1.0.7-informational.svg)](https://github.com/acidanthera/OpenCorePkg)
+[![OpenCore version](https://img.shields.io/badge/OpenCore-1.0.8-informational.svg)](https://github.com/acidanthera/OpenCorePkg)
 
 
 
@@ -25,7 +25,7 @@
 
 **macOS version**: Sequoia 15
 
-**OpenCore version**: 1.0.7
+**OpenCore version**: 1.0.8
 
 **SMBIOS**: MacPro7,1
 
@@ -146,7 +146,7 @@ reads sensor data collected by the former).
 | `tools/verify-efi.sh` | Cross-checks config.plist against what is on disk — catches missing kexts, an inconsistent WiFi patch, bad kext order |
 | `tools/apply-smbios.sh` | Generates Serial/MLB/UUID, reads the real ethernet MAC for ROM, patches config.plist — replaces GenSMBIOS + ProperTree |
 | `tools/fetch-recovery.sh` | Downloads a macOS Sequoia recovery image (~700MB) — no 15GB installer, no USB stick |
-| `tools/install-efi.sh` | Backs up an EFI partition then installs this EFI onto it, verifying before and after |
+| `tools/install-efi.sh` | Installs or upgrades this EFI on an EFI partition: verified backup, keeps your SMBIOS and other vendors' boot files, `--dry-run`, `--restore` |
 | `tools/collect-diagnostics.sh` | Read-only snapshot of the running machine — PCI paths, en0, disks, kexts, SIP state |
 
 `ocvalidate` checks the config against OpenCore's schema; `verify-efi.sh` checks
@@ -166,6 +166,40 @@ Typical run, start to finish:
 `apply-smbios.sh` edits the plist textually rather than round-tripping it, so
 the config keeps all of its explanatory comments. It refuses to write into the
 repo copy — those values are your machine's identity and this repo is public.
+
+## Upgrading OpenCore on a running machine
+
+Replacing the bootloader never touches a macOS or Windows volume — the only
+thing at risk is whether the machine boots, so the procedure is built around
+never being without a bootloader that is known to work.
+
+```bash
+git pull
+./tools/fetch-wifi-kexts.sh                  # public repo only
+./tools/install-efi.sh --list                # find the internal ESP and a USB stick's ESP
+
+# 1. Trial run on a USB stick. The internal disk is not written to.
+./tools/install-efi.sh --dry-run disk0s1     # what would change on the internal ESP
+./tools/install-efi.sh disk4s1               # the stick (GUID-partitioned, any size)
+
+# 2. Reboot, pick the stick from the firmware boot menu (F11 on MSI), and check
+#    that macOS boots, with WiFi, audio and iServices working.
+
+# 3. Only then install the same thing onto the internal disk.
+./tools/install-efi.sh disk0s1
+```
+
+`install-efi.sh` copies the Serial / MLB / UUID / ROM from the EFI it is
+replacing into the new config, so the stick and the internal disk both keep the
+machine's identity — there is no need to run `apply-smbios.sh` again. It lists
+every setting that differs from the config being replaced, replaces `EFI/BOOT`
+and `EFI/OC` only (a Windows `EFI/Microsoft` on the same partition is left
+alone), and archives the old EFI to `tools/.backups/` after proving the archive
+restores byte-for-byte.
+
+If step 2 fails, pull the stick and reboot: the internal disk still has the old
+bootloader. If the machine misbehaves after step 3, boot from the stick or run
+the `--restore` command the script printed.
 
 ## Two repos, and the workflow that connects them
 
@@ -237,7 +271,7 @@ job in either direction.
 5. Open config.plist with [**ProperTree**](https://github.com/corpnewt/ProperTree) and go to PlatformInfo > Generic. Set MLB (Board Serial), SystemSerialNumber (Serial) and SystemUUID (SmUUID) to generated values. Change ROM to your **ethernet** card's MAC address without the `:` character. [**How to get MAC Address?**](https://www.wikihow.com/Find-the-MAC-Address-of-Your-Computer)
 6. Verify the generated serial is **invalid** at [Apple's coverage checker](https://checkcoverage.apple.com/) - it should say "Unable to check coverage"
 7. If you have a different CPU core count, update the 4 "Force cpuid_cores_per_package" kernel patches - change the core count byte in Replace values (04=4-core, 06=6-core, 08=8-core, 0C=12-core, 10=16-core)
-8. Validate with `ocvalidate` from the OpenCore 1.0.7 release package
+8. Validate with `ocvalidate` from the OpenCore 1.0.8 release package
 9. Boot it!
 
 See [**UPGRADE-GUIDE.md**](UPGRADE-GUIDE.md) for a detailed step-by-step upgrade guide including debugging tips.
