@@ -119,6 +119,18 @@ if "SMCAMDProcessor.kext" in enabled_kexts and \
             "Kext order: AMDRyzenCPUPowerManagement must load before "
             "SMCAMDProcessor")
 
+# A Hackintool USB map only attaches when its "model" equals the SMBIOS model.
+# Change SMBIOS without regenerating the map and it silently stops applying.
+product = cfg["PlatformInfo"]["Generic"].get("SystemProductName", "")
+usbmap = os.path.join(oc, "Kexts", "USBPorts.kext", "Contents", "Info.plist")
+if "USBPorts.kext" in enabled_kexts and os.path.exists(usbmap):
+    for name, pers in plistlib.load(open(usbmap, "rb")).get("IOKitPersonalities", {}).items():
+        if pers.get("model") != product:
+            problems.append(
+                f"USB map: USBPorts.kext personality {name} is for "
+                f"{pers.get('model')!r} but SMBIOS is {product!r} -- the port "
+                "map will not apply")
+
 if enabled_kexts and enabled_kexts[0] != "Lilu.kext":
     problems.append(f"Kext order: Lilu must load first, found {enabled_kexts[0]}")
 
