@@ -1,4 +1,4 @@
-# Upgrade Guide: Catalina (OC 0.6.3) -> Sequoia (OC 1.0.7)
+# Upgrade Guide: Catalina (OC 0.6.3) -> Sequoia (OC 1.0.8)
 
 Hardware: Ryzen 2700 | MSI B450M Mortar Max | RX 460 | BCM94331CD -> BCM943602CS
 
@@ -348,7 +348,7 @@ and generate a new set. Repeat until you get an invalid one.
 
 ```bash
 # ocvalidate ships in the OpenCore release package, and its version must match
-# the OpenCore.efi you are running — use the one from OpenCore-1.0.7-RELEASE.zip.
+# the OpenCore.efi you are running — use the one from OpenCore-1.0.8-RELEASE.zip.
 chmod +x /path/to/Utilities/ocvalidate/ocvalidate
 /path/to/Utilities/ocvalidate/ocvalidate /Volumes/EFI/EFI/OC/config.plist
 
@@ -429,7 +429,7 @@ The EFI isn't loading at all.
    The last lines before the hang tell you what went wrong.
 
 3. For more detail, swap to OpenCore **DEBUG** build:
-   - Download `OpenCore-1.0.7-DEBUG.zip` from the same GitHub releases page
+   - Download `OpenCore-1.0.8-DEBUG.zip` from the same GitHub releases page
    - Replace ONLY these files on the USB:
      - `EFI/BOOT/BOOTx64.efi`
      - `EFI/OC/OpenCore.efi`
@@ -1327,7 +1327,7 @@ Boot into Windows (F11 > select NVMe), then:
    error message)
 2. Open Claude on your phone (claude.ai)
 3. Upload the photo and ask: "My AMD hackintosh is stuck at this point
-   during boot. I'm running OpenCore 1.0.7 with Ryzen 2700, RX 460,
+   during boot. I'm running OpenCore 1.0.8 with Ryzen 2700, RX 460,
    MSI B450M Mortar Max targeting macOS Sequoia. What's wrong?"
 
 ### Scenario D: Boot fails, you have a second Mac/Linux machine
@@ -1355,7 +1355,7 @@ Boot into Windows (F11 > select NVMe), then:
 sudo diskutil mount disk0s1 && claude "diagnose boot failure" < /Volumes/EFI/opencore-*.txt
 
 # "Is my config correct?"
-sudo diskutil mount disk0s1 && claude "audit this OC 1.0.7 config for AMD Ryzen 2700 + RX 460" < /Volumes/EFI/EFI/OC/config.plist
+sudo diskutil mount disk0s1 && claude "audit this OC 1.0.8 config for AMD Ryzen 2700 + RX 460" < /Volumes/EFI/EFI/OC/config.plist
 
 # "What kexts am I loading?"
 sudo diskutil mount disk0s1 && claude "list all enabled kexts and check loading order" < /Volumes/EFI/EFI/OC/config.plist
@@ -1373,7 +1373,7 @@ sudo diskutil mount disk0s1 && claude "compare this config against Dortania AMD 
 ### Tips for getting the best help from Claude
 
 - **Always mention your hardware**: "Ryzen 2700, RX 460, MSI B450M Mortar Max"
-- **Include the OC version**: "OpenCore 1.0.7"
+- **Include the OC version**: "OpenCore 1.0.8"
 - **Include the macOS target**: "macOS Sequoia 15"
 - **Feed actual files** rather than describing the problem — Claude can parse
   plist XML, boot logs, and panic reports directly

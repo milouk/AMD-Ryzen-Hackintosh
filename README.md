@@ -2,7 +2,7 @@
 
 
 [![macOS version](https://img.shields.io/badge/macOS-Sequoia_15-informational.svg)](https://www.apple.com/macos)
-[![OpenCore version](https://img.shields.io/badge/OpenCore-1.0.7-informational.svg)](https://github.com/acidanthera/OpenCorePkg)
+[![OpenCore version](https://img.shields.io/badge/OpenCore-1.0.8-informational.svg)](https://github.com/acidanthera/OpenCorePkg)
 
 
 
@@ -25,7 +25,7 @@
 
 **macOS version**: Sequoia 15
 
-**OpenCore version**: 1.0.7
+**OpenCore version**: 1.0.8
 
 **SMBIOS**: MacPro7,1
 
@@ -237,7 +237,7 @@ job in either direction.
 5. Open config.plist with [**ProperTree**](https://github.com/corpnewt/ProperTree) and go to PlatformInfo > Generic. Set MLB (Board Serial), SystemSerialNumber (Serial) and SystemUUID (SmUUID) to generated values. Change ROM to your **ethernet** card's MAC address without the `:` character. [**How to get MAC Address?**](https://www.wikihow.com/Find-the-MAC-Address-of-Your-Computer)
 6. Verify the generated serial is **invalid** at [Apple's coverage checker](https://checkcoverage.apple.com/) - it should say "Unable to check coverage"
 7. If you have a different CPU core count, update the 4 "Force cpuid_cores_per_package" kernel patches - change the core count byte in Replace values (04=4-core, 06=6-core, 08=8-core, 0C=12-core, 10=16-core)
-8. Validate with `ocvalidate` from the OpenCore 1.0.7 release package
+8. Validate with `ocvalidate` from the OpenCore 1.0.8 release package
 9. Boot it!
 
 See [**UPGRADE-GUIDE.md**](UPGRADE-GUIDE.md) for a detailed step-by-step upgrade guide including debugging tips.
