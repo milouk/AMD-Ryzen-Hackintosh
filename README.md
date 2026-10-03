@@ -18,10 +18,7 @@
 | GPU | RX 460 (Polaris) |
 | WiFi & Bluetooth | BCM943602CS (BCM43602 — `pci14e4,43ba`) |
 | Ethernet | Realtek RTL8111 (onboard 8111H) |
-| macOS Disk | XPG SX8200 Pro 256GB NVMe (M2_1, PCIe 3.0 x4) — SM2262EN, TLC, DRAM cache |
-| Windows Disk | Crucial P310 500GB NVMe (M2_2, PCIe 2.0 x4) — Phison E27T, QLC, DRAM-less |
-| Spare | Kingston A400 256GB SATA SSD |
-| WiFi slot | PCI_E3 (PCIe 2.0 x1) — **not** PCI_E4, which M2_2 disables |
+| Disk | Crucial P310 500GB NVMe (M2_1, PCIe 3.0 x4) |
 
 **macOS version**: Sequoia 15
 
@@ -29,20 +26,25 @@
 
 **SMBIOS**: MacPro7,1
 
-## What is working
+**Status**: this configuration passes `ocvalidate` and `tools/verify-efi.sh`,
+and was checked against the hardware it targets, but the Sequoia build has not
+been booted on that hardware yet. The lists below describe what it is built to
+do; they will be confirmed or corrected after the migration from Catalina.
+
+## What is expected to work
 
 - Audio (ALC892 via AppleALC, layout-id 1)
 - Ethernet (Realtek RTL8111)
 - Bluetooth (BCM943602CS via BlueToolFixup — works natively on macOS 12+)
 - WiFi (BCM943602CS — **requires the restoration kexts, see below**)
 - GPU acceleration (RX 460 Polaris — native drivers)
-- Sleep/Wake
-- USB (custom mapped via USBPorts.kext)
+- Sleep/Wake (never exercised on this machine under Catalina — unverified)
+- USB (custom mapped via USBPorts.kext, keyed to the MacPro7,1 SMBIOS)
 - iMessage, FaceTime, iCloud
-- Windows dual-boot (Kingston SATA)
 - OpenCanopy GUI picker with BsxM1 theme
 - NVMe power management (NVMeFix)
 - CPU and GPU temperature sensors (SMCAMDProcessor, SMCRadeonSensors)
+- Motherboard fan speeds (SMCSuperIO)
 
 ## What is not working
 
@@ -51,7 +53,7 @@
   BCM943602, Fenvi T919, all of them. This EFI restores it by injecting the
   Ventura-era networking stack, at the cost of Secure Boot and full SIP. See
   [WiFi on Sequoia](#wifi-on-sequoia) below. Bluetooth is unaffected.
-- Partially-working virtualization (only VirtualBox & Parallels Desktop 13.1.0 or below) - this is an AMD limitation
+- Virtualization that relies on Apple's Hypervisor framework - this is an AMD limitation
 - 3.5mm jack microphone (only USB/Bluetooth microphones work) - can be fixed with VoodooHDA but sacrifices audio quality
 - Adobe apps require [patches](https://github.com/ArtSabintsev/Adobe-CC-Fonts-Support) for AMD
 
@@ -82,12 +84,12 @@ which is the BCM43602 chip on the BCM943602CS.
 | `NVRAM > csr-active-config` | `03080000` | Partial SIP — untrusted kexts, unrestricted FS |
 | `Kernel > Block` | `com.apple.iokit.IOSkywalkFamily` excluded | So the injected Ventura build loads instead |
 
-You may also need to run OCLP's root patch (**Post-Install Root Patch → Networking:
-Modern Wireless**) if WiFi still does not appear after injection, and it has to be
-re-applied after every macOS update. This is the ongoing maintenance cost of
-Broadcom WiFi on Sequoia.
+The kexts restore the driver, but Apple removed the matching frameworks too, so
+expect to also run OCLP's root patch (**Post-Install Root Patch → Networking:
+Modern Wireless**) once Sequoia is installed, and to re-apply it after every
+macOS update. This is the ongoing maintenance cost of Broadcom WiFi on Sequoia.
 
-> If you would rather keep Secure Boot and full SIP: delete kext entries 14–17,
+> If you would rather keep Secure Boot and full SIP: delete kext entries 15–18,
 > disable the `IOSkywalkFamily` block, set `SecureBootModel` back to `Default` and
 > `csr-active-config` back to `00000000`. You keep Bluetooth and lose WiFi, and the
 > machine runs on Ethernet. An Intel AX210 with AirportItlwm is the other route —
@@ -99,6 +101,7 @@ Broadcom WiFi on Sequoia.
 |------|---------|---------|
 | [Lilu](https://github.com/acidanthera/Lilu) | 1.7.2 | Core patching engine |
 | [VirtualSMC](https://github.com/acidanthera/VirtualSMC) | 1.3.7 | SMC emulation |
+| [SMCSuperIO](https://github.com/acidanthera/VirtualSMC) | 1.3.7 | Motherboard fan speeds (VirtualSMC plugin, Nuvoton NCT6797D) |
 | [WhateverGreen](https://github.com/acidanthera/WhateverGreen) | 1.7.0 | GPU patching |
 | [AppleALC](https://github.com/acidanthera/AppleALC) | 1.9.7 | Audio patching |
 | [RealtekRTL8111](https://github.com/Mieze/RTL8111_driver_for_OS_X) | 3.0.0 | Ethernet |
@@ -159,8 +162,9 @@ Typical run, start to finish:
 ./tools/verify-efi.sh                              # sanity check
 ./tools/install-efi.sh --list                      # find your target ESP
 ./tools/install-efi.sh disk2s1                     # backs up, installs, verifies
+sudo diskutil mount disk2s1
 ./tools/apply-smbios.sh /Volumes/EFI/EFI/OC/config.plist
-./tools/fetch-recovery.sh /Volumes/SomeVolume      # installer, no USB needed
+./tools/fetch-recovery.sh /Volumes/SomeVolume      # ~700MB recovery image
 ```
 
 `apply-smbios.sh` edits the plist textually rather than round-tripping it, so
@@ -263,25 +267,30 @@ job in either direction.
 
 ## How to use
 
-1. Make your USB installer with [**this guide**](https://dortania.github.io/OpenCore-Install-Guide/installer-guide/)
-2. Clone the repository and run `./tools/fetch-wifi-kexts.sh` — without it the
+1. Clone the repository and run `./tools/fetch-wifi-kexts.sh` — without it the
    `IOSkywalkFamily` block has nothing to fall back to and you get no WiFi
-3. Paste the `EFI` folder into your USB's EFI partition
-4. Download [**GenSMBIOS**](https://github.com/corpnewt/GenSMBIOS) to generate unique SMBIOS information. Run it and select **Generate SMBIOS**, as the model select **MacPro7,1**
-5. Open config.plist with [**ProperTree**](https://github.com/corpnewt/ProperTree) and go to PlatformInfo > Generic. Set MLB (Board Serial), SystemSerialNumber (Serial) and SystemUUID (SmUUID) to generated values. Change ROM to your **ethernet** card's MAC address without the `:` character. [**How to get MAC Address?**](https://www.wikihow.com/Find-the-MAC-Address-of-Your-Computer)
-6. Verify the generated serial is **invalid** at [Apple's coverage checker](https://checkcoverage.apple.com/) - it should say "Unable to check coverage"
-7. If you have a different CPU core count, update the 4 "Force cpuid_cores_per_package" kernel patches - change the core count byte in Replace values (04=4-core, 06=6-core, 08=8-core, 0C=12-core, 10=16-core)
-8. Validate with `ocvalidate` from the OpenCore 1.0.8 release package
-9. Boot it!
+2. If your CPU does not have 8 cores, update the 4 "Force cpuid_cores_per_package"
+   kernel patches — change the core count byte in the Replace values
+   (04=4-core, 06=6-core, 08=8-core, 0C=12-core, 10=16-core)
+3. Erase a USB stick as MS-DOS (FAT) with a GUID Partition Map, then install the
+   EFI onto its EFI partition with `./tools/install-efi.sh`
+4. Give the config on the stick its own identity with `./tools/apply-smbios.sh`,
+   and check the serial at [Apple's coverage checker](https://checkcoverage.apple.com/)
+   — it should say "unable to check coverage"
+5. Put a recovery image on the stick with `./tools/fetch-recovery.sh`
+6. Boot it
 
-See [**UPGRADE-GUIDE.md**](UPGRADE-GUIDE.md) for a detailed step-by-step upgrade guide including debugging tips.
+[**UPGRADE-GUIDE.md**](UPGRADE-GUIDE.md) walks through the whole migration this
+repo was built for — Catalina on OpenCore 0.6.3 to Sequoia on 1.0.8 — including
+the BIOS settings, debugging and recovery.
 
 **IMPORTANT:**
-- You MUST generate your own SMBIOS values with GenSMBIOS for iMessage/FaceTime to work
+- Every machine needs its own SMBIOS for iMessage/FaceTime; the values in this repo are placeholders
 - `ROM` should be your **Ethernet** MAC, not the WiFi card's — en0 must be Ethernet for iServices
 - After any hardware swap, delete `/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist` and reboot so interfaces re-enumerate with Ethernet as en0
-- If you have a different motherboard, you need to re-map USB ports with [USBToolBox](https://github.com/USBToolBox/tool)
-- BIOS settings: Disable Fast Boot, Secure Boot, CSM, IOMMU. Enable Above 4G Decoding, EHCI/XHCI Hand-off, SATA AHCI mode
+- `USBPorts.kext` maps this board's ports and matches on the SMBIOS model. On a different motherboard, or with a different SMBIOS, re-map with [USBToolBox](https://github.com/USBToolBox/tool)
+- BIOS settings: Disable Fast Boot, Secure Boot, CSM, IOMMU. Enable Above 4G Decoding, XHCI Hand-off, SATA AHCI mode
+- The installer needs Ethernet: Sequoia has no Broadcom WiFi driver until the patch above is applied
 
 ## Credits
 
@@ -296,7 +305,7 @@ See [**UPGRADE-GUIDE.md**](UPGRADE-GUIDE.md) for a detailed step-by-step upgrade
  - [[Driver] OpenCanopy](https://github.com/acidanthera/OpenCorePkg)
  - [[Driver] HFSPlus](https://github.com/acidanthera/OcBinaryData/blob/master/Drivers/HfsPlus.efi)
  - [[Kext] Lilu](https://github.com/acidanthera/Lilu)
- - [[Kext] VirtualSMC](https://github.com/acidanthera/VirtualSMC)
+ - [[Kext] VirtualSMC + SMCSuperIO](https://github.com/acidanthera/VirtualSMC)
  - [[Kext] WhateverGreen](https://github.com/acidanthera/WhateverGreen)
  - [[Kext] AppleALC](https://github.com/acidanthera/AppleALC)
  - [[Kext] RealtekRTL8111](https://github.com/Mieze/RTL8111_driver_for_OS_X)

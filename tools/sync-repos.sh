@@ -125,7 +125,13 @@ echo
 echo "Syncing..."
 rm -rf "$DST/EFI"
 cp -R "$SRC/EFI" "$DST/EFI"
-[ -d "$SRC/tools" ] && { rm -rf "$DST/tools"; cp -R "$SRC/tools" "$DST/tools"; }
+# Each checkout keeps its own tools/.cache and tools/.backups — including the
+# backup taken a moment ago — so replace everything in tools/ except those.
+if [ -d "$SRC/tools" ]; then
+	mkdir -p "$DST/tools"
+	rsync -a --delete --exclude '.cache/' --exclude '.backups/' --exclude '.DS_Store' \
+		"$SRC/tools/" "$DST/tools/"
+fi
 [ -f "$SRC/UPGRADE-GUIDE.md" ] && cp "$SRC/UPGRADE-GUIDE.md" "$DST/UPGRADE-GUIDE.md"
 # Workflows live in both repos. publish-mirror.yml no-ops outside the private
 # one via its `if: github.repository == ...` guard, so syncing it is safe.
@@ -146,9 +152,6 @@ elif [ "$DIRECTION" = to-working ] && [ -f "$SRC/README.md" ]; then
 	cp "$SRC/README.md" "$DST/docs/README.public.md"
 	echo "  public README captured to docs/README.public.md"
 fi
-
-# Tool caches and backups are machine-local; never propagate them.
-rm -rf "$DST/tools/.cache" "$DST/tools/.backups"
 
 # ------------------------------------------------------ restore SMBIOS block
 python3 - "$DST/EFI/OC/config.plist" "$KEEP_MLB" "$KEEP_SERIAL" "$KEEP_UUID" "$KEEP_ROM" <<'PY'
