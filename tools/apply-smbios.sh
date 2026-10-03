@@ -17,7 +17,7 @@
 
 set -eu
 
-OC_VERSION=1.0.7
+OC_VERSION=1.0.8
 REPO_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 ROM=""
 DRY_RUN=0
@@ -65,7 +65,7 @@ fi
 # ---------------------------------------------------------------- macserial
 MACSERIAL=""
 for c in \
-	"$REPO_ROOT/tools/.cache/oc/Utilities/macserial/macserial" \
+	"$REPO_ROOT/tools/.cache/oc-$OC_VERSION/Utilities/macserial/macserial" \
 	"$(command -v macserial 2>/dev/null || true)"
 do
 	[ -n "$c" ] && [ -x "$c" ] && MACSERIAL=$c && break
@@ -80,10 +80,10 @@ if [ -z "$MACSERIAL" ]; then
 		curl -fsSL --retry 3 --max-time 300 -o "$ZIP" \
 			"https://github.com/acidanthera/OpenCorePkg/releases/download/$OC_VERSION/OpenCore-$OC_VERSION-RELEASE.zip"
 	fi
-	rm -rf "$CACHE/oc"
-	mkdir -p "$CACHE/oc"
-	unzip -q -o "$ZIP" "Utilities/macserial/*" -d "$CACHE/oc"
-	MACSERIAL="$CACHE/oc/Utilities/macserial/macserial"
+	rm -rf "$CACHE/oc-$OC_VERSION"
+	mkdir -p "$CACHE/oc-$OC_VERSION"
+	unzip -q -o "$ZIP" "Utilities/macserial/*" -d "$CACHE/oc-$OC_VERSION"
+	MACSERIAL="$CACHE/oc-$OC_VERSION/Utilities/macserial/macserial"
 	chmod +x "$MACSERIAL"
 fi
 

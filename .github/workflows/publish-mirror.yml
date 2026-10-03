@@ -99,7 +99,7 @@ jobs:
       - name: Validate the sanitized config
         run: |
           curl -fsSL --retry 3 -o oc.zip \
-            "https://github.com/acidanthera/OpenCorePkg/releases/download/1.0.7/OpenCore-1.0.7-RELEASE.zip"
+            "https://github.com/acidanthera/OpenCorePkg/releases/download/1.0.8/OpenCore-1.0.8-RELEASE.zip"
           unzip -q oc.zip -d oc
           chmod +x oc/Utilities/ocvalidate/ocvalidate.linux
           ./oc/Utilities/ocvalidate/ocvalidate.linux staging/EFI/OC/config.plist

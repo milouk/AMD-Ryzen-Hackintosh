@@ -3,14 +3,14 @@
 <plist version="1.0">
 <dict>
 	<!--
-		OpenCore 1.0.7 config.plist for Ryzentosh
+		OpenCore 1.0.8 config.plist for Ryzentosh
 		Hardware: Ryzen 2700 (8-core) | MSI B450M Mortar Max | RX 460 | BCM943602CS WiFi+BT
 		Storage: macOS on XPG SX8200 Pro 256GB NVMe (M2_1) | Windows on Crucial P310 500GB (M2_2)
 		         SX8200 Pro = SM2262EN, TLC, has DRAM cache -> the better macOS boot drive.
 		         P310 500GB = Phison E27T, QLC, DRAM-less, needs HMB (which macOS lacks).
 		Target: macOS Sequoia 15
 
-		Based on: OC 1.0.7 Sample.plist + Dortania AMD Zen guide + AMD_Vanilla patches
+		Based on: OC 1.0.8 Sample.plist + Dortania AMD Zen guide + AMD_Vanilla patches
 
 		!!! Two things MUST be done before this config will boot as intended:
 		    1. SMBIOS values (MLB, Serial, UUID, ROM) are PLACEHOLDERS - generate with GenSMBIOS
@@ -1871,6 +1871,8 @@
 				<string></string>
 				<key>Enabled</key>
 				<true/>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 				<key>Path</key>
@@ -1883,6 +1885,8 @@
 				<string>HFS+ Driver</string>
 				<key>Enabled</key>
 				<true/>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 				<key>Path</key>
@@ -1896,6 +1900,8 @@
 				<string>GUI boot picker</string>
 				<key>Enabled</key>
 				<true/>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 				<key>Path</key>
@@ -1909,6 +1915,8 @@
 				<string>NVRAM reset from picker</string>
 				<key>Enabled</key>
 				<true/>
+				<key>HideVerbose</key>
+				<false/>
 				<key>LoadEarly</key>
 				<false/>
 				<key>Path</key>

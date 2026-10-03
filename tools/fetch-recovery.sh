@@ -19,7 +19,7 @@
 
 set -eu
 
-OC_VERSION=1.0.7
+OC_VERSION=1.0.8
 REPO_ROOT=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 CACHE="$REPO_ROOT/tools/.cache"
 
@@ -49,7 +49,7 @@ elif [ ! -d "$DEST" ]; then
 fi
 
 # ------------------------------------------------------------- macrecovery
-MR="$CACHE/oc/Utilities/macrecovery/macrecovery.py"
+MR="$CACHE/oc-$OC_VERSION/Utilities/macrecovery/macrecovery.py"
 if [ ! -f "$MR" ]; then
 	echo "Fetching OpenCore $OC_VERSION utilities..."
 	mkdir -p "$CACHE"
@@ -58,8 +58,8 @@ if [ ! -f "$MR" ]; then
 		curl -fsSL --retry 3 --max-time 300 -o "$ZIP" \
 			"https://github.com/acidanthera/OpenCorePkg/releases/download/$OC_VERSION/OpenCore-$OC_VERSION-RELEASE.zip"
 	fi
-	mkdir -p "$CACHE/oc"
-	unzip -q -o "$ZIP" "Utilities/macrecovery/*" -d "$CACHE/oc"
+	mkdir -p "$CACHE/oc-$OC_VERSION"
+	unzip -q -o "$ZIP" "Utilities/macrecovery/*" -d "$CACHE/oc-$OC_VERSION"
 fi
 
 echo "Downloading $LABEL recovery image"
