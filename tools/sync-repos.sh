@@ -11,8 +11,10 @@
 #   --to-working   public -> working, KEEPING the working repo's real SMBIOS
 #   --to-public    working -> public, REPLACING SMBIOS with placeholders
 #
-# Both directions back up the target config first and validate afterwards.
-# Neither touches README.md: the two repos deliberately have different ones.
+# Both directions check the source first, back up the target, and validate
+# afterwards. The two repos have different READMEs: the public one is authored
+# in the working repo as docs/README.public.md, so --to-public writes it to
+# the public README.md and --to-working captures it back.
 #
 # Usage:
 #   ./tools/sync-repos.sh --to-working
@@ -104,9 +106,24 @@ else
 fi
 echo
 
+# The target's EFI is replaced wholesale, so an incomplete source would take
+# the target's files with it — the Wi-Fi kexts, typically, when the public
+# checkout has not fetched them. Refuse before anything is touched.
+if ! "$PUBLIC/tools/verify-efi.sh" "$SRC/EFI" > /dev/null 2>&1; then
+	echo "REFUSING: the source EFI at $SRC/EFI does not verify:" >&2
+	"$PUBLIC/tools/verify-efi.sh" "$SRC/EFI" 2>&1 | grep -E 'FAIL|ERROR' | sed 's/^/  /' >&2 || true
+	echo "Nothing was written. If kexts are missing, run tools/fetch-wifi-kexts.sh there first." >&2
+	exit 1
+fi
+
 if [ "$DRY_RUN" -eq 1 ]; then
 	echo "Would copy: EFI/  tools/  .github/  UPGRADE-GUIDE.md"
-	echo "Would leave alone: README.md, .gitignore, .git/"
+	if [ "$DIRECTION" = to-public ]; then
+		echo "Would write: README.md, from docs/README.public.md"
+	else
+		echo "Would write: docs/README.public.md, from the public README.md"
+	fi
+	echo "Would leave alone: .gitignore, .git/"
 	echo "(dry run — nothing written)"
 	exit 0
 fi
@@ -116,8 +133,13 @@ STAMP=$(date +%Y%m%d-%H%M%S)
 BACKUP="$PUBLIC/tools/.backups/sync-$DIRECTION-$STAMP.tar.gz"
 mkdir -p "$PUBLIC/tools/.backups"
 echo "Backing up target -> $BACKUP"
-tar -czf "$BACKUP" -C "$DST" EFI UPGRADE-GUIDE.md 2>/dev/null || \
-	tar -czf "$BACKUP" -C "$DST" EFI
+# Everything this run can overwrite, where the target has it.
+SAVE="EFI"
+for f in UPGRADE-GUIDE.md README.md docs/README.public.md; do
+	[ -e "$DST/$f" ] && SAVE="$SAVE $f"
+done
+# shellcheck disable=SC2086
+tar -czf "$BACKUP" -C "$DST" $SAVE
 echo "  $(du -h "$BACKUP" | cut -f1)"
 echo
 
@@ -183,7 +205,14 @@ PY
 echo
 echo "Verifying target..."
 plutil -lint "$DST/EFI/OC/config.plist" >/dev/null || { echo "FAIL: malformed plist" >&2; exit 1; }
-"$PUBLIC/tools/verify-efi.sh" "$DST/EFI" | sed 's/^/  /'
+# Not through a pipe: the pipe's status would be sed's, and a failure here
+# must stop the run.
+if ! VERIFY=$("$PUBLIC/tools/verify-efi.sh" "$DST/EFI" 2>&1); then
+	printf '%s\n' "$VERIFY" | sed 's/^/  /' >&2
+	echo "FAIL: the synced EFI does not verify. The target as it was: $BACKUP" >&2
+	exit 1
+fi
+printf '%s\n' "$VERIFY" | sed 's/^/  /'
 
 # Belt and braces: the public repo must never carry a real serial.
 if [ "$DIRECTION" = to-public ]; then

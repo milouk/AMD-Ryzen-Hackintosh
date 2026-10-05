@@ -59,7 +59,10 @@ for e in cfg["Kernel"]["Add"]:
 
 # --- Drivers and Tools -------------------------------------------------
 for e in cfg["UEFI"]["Drivers"]:
-    if e.get("Enabled"):
+    if isinstance(e, str):          # OpenCore before 0.7.3: a bare file name
+        if not e.startswith("#"):
+            exists(os.path.join("Drivers", e), "Driver")
+    elif e.get("Enabled"):
         exists(os.path.join("Drivers", e["Path"]), "Driver")
 for e in cfg["Misc"]["Tools"]:
     if e.get("Enabled"):
@@ -101,7 +104,7 @@ if "com.apple.iokit.IOSkywalkFamily" in blocked:
             "WiFi: csr-active-config is 00000000 (SIP fully on); the injected "
             "kexts will be rejected. Expected 03080000.")
 
-nvram_delete = cfg["NVRAM"]["Delete"].get(
+nvram_delete = (cfg["NVRAM"].get("Delete") or cfg["NVRAM"].get("Block") or {}).get(
     "7C436110-AB2A-4BBB-A880-FE41995C9F82", [])
 for var in ("boot-args", "csr-active-config"):
     if var in cfg["NVRAM"]["Add"]["7C436110-AB2A-4BBB-A880-FE41995C9F82"] \

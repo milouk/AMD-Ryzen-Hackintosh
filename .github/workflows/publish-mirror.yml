@@ -20,12 +20,17 @@ name: Publish public mirror
 #   gh repo deploy-key add k.pub --repo milouk/AMD-Ryzen-Hackintosh --allow-write
 #   gh secret set MIRROR_DEPLOY_KEY --repo milouk/My-Ryzentosh < k && rm k k.pub
 
+# The private default branch publishes to the mirror's default branch (their
+# names differ). Any other branch publishes to the public branch of the same
+# name, so work in progress never lands on the mirror's default branch.
+
 on:
   push:
     branches: ['**']
     paths:
       - 'EFI/**'
       - 'tools/**'
+      - 'docs/README.public.md'
       - 'UPGRADE-GUIDE.md'
       - '.github/workflows/**'
   workflow_dispatch:
@@ -35,9 +40,16 @@ on:
         type: boolean
         default: false
 
+# One publish per branch at a time, in the order the pushes arrived.
+concurrency:
+  group: publish-mirror-${{ github.ref }}
+  cancel-in-progress: false
+
 env:
   PRIVATE_REPO: milouk/My-Ryzentosh
   PUBLIC_REPO: milouk/AMD-Ryzen-Hackintosh
+  BRANCH: ${{ github.ref_name }}
+  DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
 jobs:
   publish:
@@ -55,6 +67,23 @@ jobs:
           repository: milouk/AMD-Ryzen-Hackintosh
           ssh-key: ${{ secrets.MIRROR_DEPLOY_KEY }}
           path: public
+
+      - name: Switch the mirror to this branch
+        working-directory: public
+        run: |
+          if [ "$BRANCH" = "$DEFAULT_BRANCH" ]; then
+            # Default to default: the checkout is already on it.
+            TARGET=$(git symbolic-ref --short HEAD)
+          elif git fetch --depth 1 origin "refs/heads/$BRANCH"; then
+            TARGET=$BRANCH
+            git checkout -B "$TARGET" FETCH_HEAD
+          else
+            # New on the mirror: started from its default branch.
+            TARGET=$BRANCH
+            git checkout -B "$TARGET"
+          fi
+          echo "Publishing $BRANCH to the mirror's $TARGET"
+          echo "TARGET=$TARGET" >> "$GITHUB_ENV"
 
       - name: Stage a sanitized copy
         run: |
@@ -159,7 +188,7 @@ jobs:
           Mirrors ${PRIVATE_REPO}@${GITHUB_SHA:0:7}. SMBIOS is replaced with
           placeholders and the Apple Wi-Fi kexts are omitted; run
           tools/fetch-wifi-kexts.sh to restore those locally."
-          git push
+          git push origin "HEAD:refs/heads/$TARGET"
 
       - name: Dry run summary
         if: ${{ inputs.dry_run }}
