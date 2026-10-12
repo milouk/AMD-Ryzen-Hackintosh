@@ -26,25 +26,26 @@
 
 **SMBIOS**: MacPro7,1
 
-**Status**: this configuration passes `ocvalidate` and `tools/verify-efi.sh`,
-and was checked against the hardware it targets, but the Sequoia build has not
-been booted on that hardware yet. The lists below describe what it is built to
-do; they will be confirmed or corrected after the migration from Catalina.
+**Status**: this is the configuration the machine runs. Sequoia was installed
+with it from a recovery image and boots from the internal NVMe.
 
-## What is expected to work
+## What works
 
 - Audio (ALC892 via AppleALC, layout-id 1)
-- Ethernet (Realtek RTL8111)
-- Bluetooth (BCM943602CS via BlueToolFixup — works natively on macOS 12+)
-- WiFi (BCM943602CS — **requires the restoration kexts, see below**)
-- GPU acceleration (RX 460 Polaris — native drivers)
-- Sleep/Wake (never exercised on this machine under Catalina — unverified)
+- Ethernet (Realtek RTL8111), as `en0`
+- Bluetooth (BCM943602CS, with BlueToolFixup)
+- WiFi (BCM943602CS — **with the restoration kexts and the OCLP root patch, see below**)
+- GPU acceleration (RX 460 Polaris — native drivers, Metal)
 - USB (custom mapped via USBPorts.kext, keyed to the MacPro7,1 SMBIOS)
-- iMessage, FaceTime, iCloud
 - OpenCanopy GUI picker with BsxM1 theme
-- NVMe power management (NVMeFix)
-- CPU and GPU temperature sensors (SMCAMDProcessor, SMCRadeonSensors)
-- Motherboard fan speeds (SMCSuperIO)
+- NVMe at full link speed with TRIM, and power management (NVMeFix)
+- CPU power management and sensors (AMDRyzenCPUPowerManagement, SMCAMDProcessor),
+  GPU temperature (SMCRadeonSensors), motherboard fan speeds (SMCSuperIO)
+- Docker, through [Graft](#docker) — Apple's hypervisor does not run on AMD
+- iMessage, FaceTime, iCloud (the config is built for them: Ethernet is `en0`
+  and `ROM` is its MAC)
+
+Not exercised yet: sleep and wake.
 
 ## What is not working
 
@@ -53,7 +54,11 @@ do; they will be confirmed or corrected after the migration from Catalina.
   BCM943602, Fenvi T919, all of them. This EFI restores it by injecting the
   Ventura-era networking stack, at the cost of Secure Boot and full SIP. See
   [WiFi on Sequoia](#wifi-on-sequoia) below. Bluetooth is unaffected.
-- Virtualization that relies on Apple's Hypervisor framework - this is an AMD limitation
+- Anything that needs Apple's Hypervisor framework — Docker Desktop, OrbStack,
+  UTM with acceleration, current VirtualBox. It does not exist for AMD CPUs.
+  Containers run through [Graft](#docker) instead.
+- Shut Down stops macOS but leaves the machine powered until the button is
+  held. Restart is unaffected.
 - 3.5mm jack microphone (only USB/Bluetooth microphones work) - can be fixed with VoodooHDA but sacrifices audio quality
 - Adobe apps require [patches](https://github.com/ArtSabintsev/Adobe-CC-Fonts-Support) for AMD
 
@@ -84,10 +89,13 @@ which is the BCM43602 chip on the BCM943602CS.
 | `NVRAM > csr-active-config` | `03080000` | Partial SIP — untrusted kexts, unrestricted FS |
 | `Kernel > Block` | `com.apple.iokit.IOSkywalkFamily` excluded | So the injected Ventura build loads instead |
 
-The kexts restore the driver, but Apple removed the matching frameworks too, so
-expect to also run OCLP's root patch (**Post-Install Root Patch → Networking:
-Modern Wireless**) once Sequoia is installed, and to re-apply it after every
-macOS update. This is the ongoing maintenance cost of Broadcom WiFi on Sequoia.
+The kexts restore the driver, but Apple removed the matching frameworks too.
+With the kexts alone the card is detected and WiFi turns on, but no networks
+are ever listed. Run OCLP's root patch (**Post-Install Root Patch → Networking:
+Modern Wireless**) once Sequoia is installed, and again after every macOS
+update. This is the ongoing maintenance cost of Broadcom WiFi on Sequoia. Use
+only that button in OCLP: its "Build and Install OpenCore" is for real Macs and
+would replace this bootloader.
 
 > If you would rather keep Secure Boot and full SIP: delete kext entries 15–18,
 > disable the `IOSkywalkFamily` block, set `SecureBootModel` back to `Default` and
@@ -105,7 +113,7 @@ macOS update. This is the ongoing maintenance cost of Broadcom WiFi on Sequoia.
 | [WhateverGreen](https://github.com/acidanthera/WhateverGreen) | 1.7.0 | GPU patching |
 | [AppleALC](https://github.com/acidanthera/AppleALC) | 1.9.7 | Audio patching |
 | [RealtekRTL8111](https://github.com/Mieze/RTL8111_driver_for_OS_X) | 3.0.0 | Ethernet |
-| [AppleMCEReporterDisabler](https://github.com/AMD-OSX/AMD_Vanilla) | 1.0 | Prevents MCE panics on AMD |
+| [AppleMCEReporterDisabler](https://github.com/acidanthera/bugtracker/files/3703498/AppleMCEReporterDisabler.kext.zip) | 1.2 | Keeps `AppleIntelMCEReporter` from loading; without it MacPro7,1 on AMD panics about a minute after boot |
 | [AMDRyzenCPUPowerManagement](https://github.com/trulyspinach/SMCAMDProcessor) | 0.7.2 | Ryzen power management |
 | [SMCAMDProcessor](https://github.com/trulyspinach/SMCAMDProcessor) | 1.0.1 | CPU sensor data |
 | USBPorts | 1.0 | Custom USB port map |
@@ -123,6 +131,20 @@ macOS update. This is the ongoing maintenance cost of Broadcom WiFi on Sequoia.
 The kext load order in `config.plist` is deliberate: Lilu first, VirtualSMC before
 its plugins, and `AMDRyzenCPUPowerManagement` before `SMCAMDProcessor` (the latter
 reads sensor data collected by the former).
+
+## Docker
+
+macOS has no hypervisor for AMD processors, so nothing built on Apple's
+Hypervisor framework runs here. Docker is available on this machine because of
+**[Graft](https://github.com/milouk/graft)**: a port of the BSD hypervisor NVMM
+to macOS as a kernel extension, with a small VM monitor that boots a Linux
+guest and a script that connects the `docker` client to it. Containers, bind
+mounts of the home folder and published ports work from the Mac's terminal as
+they would with Docker Desktop.
+
+It needs the kext-signing part of SIP off, which `csr-active-config 03080000`
+in this config already provides. Its README covers building, loading at boot
+and the container runtimes it offers.
 
 ## ACPI
 
@@ -286,8 +308,25 @@ job in either direction.
 - After any hardware swap, delete `/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist` and reboot so interfaces re-enumerate with Ethernet as en0
 - `USBPorts.kext` maps this board's ports and matches on the SMBIOS model. On a different motherboard, or with a different SMBIOS, re-map with [USBToolBox](https://github.com/USBToolBox/tool)
 - BIOS settings: Disable Fast Boot, Secure Boot, CSM, IOMMU. Enable Above 4G Decoding, XHCI Hand-off, SATA AHCI mode
-- The config also passes `npci=0x2000`. On a board that cannot leave CSM mode (a graphics card without a UEFI GOP), Above 4G Decoding alone does not prevent the hang before "PCI Configuration Begin"
+- A graphics card whose firmware has no UEFI GOP keeps the board in CSM mode whatever you set. That works: the picker is low resolution, and macOS is unaffected
+- The config also passes `npci=0x2000`. On such a board Above 4G Decoding alone does not prevent the hang before "PCI Configuration Begin"
 - The installer needs Ethernet: Sequoia has no Broadcom WiFi driver until the patch above is applied
+
+## When a boot fails
+
+Two things found the hard way while bringing this machine up:
+
+- **Read the panic before changing anything.** A kernel panic is kept in NVRAM
+  and written to `/Library/Logs/DiagnosticReports/Kernel_*.panic` the next
+  time any macOS starts on the machine. It names the kext at fault. With GPU
+  acceleration on, a panic after the display hand-over shows nothing on screen
+  and looks like a freeze at `IOG flags 0x3 (0x51)`.
+- **A kext that is present can still do nothing.** `verify-efi.sh` fails on a
+  codeless kext with no `IOKitPersonalities`, because an empty
+  `AppleMCEReporterDisabler` once passed every other check here.
+
+Keep the USB stick you installed from: it is a second bootloader that is known
+to work.
 
 ## Credits
 
@@ -312,7 +351,8 @@ job in either direction.
  - [[Kext] AMDRyzenCPUPowerManagement](https://github.com/trulyspinach/SMCAMDProcessor)
  - [[Kext] SMCAMDProcessor](https://github.com/trulyspinach/SMCAMDProcessor)
  - [[Kext] SMCRadeonSensors](https://github.com/ChefKissInc/SMCRadeonSensors)
- - [[Kext] AppleMCEReporterDisabler](https://github.com/AMD-OSX/AMD_Vanilla/blob/experimental-opencore/Extra/AppleMCEReporterDisabler.kext.zip)
+ - [[Kext] AppleMCEReporterDisabler](https://github.com/acidanthera/bugtracker/files/3703498/AppleMCEReporterDisabler.kext.zip)
+ - [[Hypervisor] Graft](https://github.com/milouk/graft), with NVMM from [DragonFly BSD](https://www.dragonflybsd.org/docs/docs/howtos/nvmm/)
  - [[Kexts] WiFi restoration payloads](https://github.com/dortania/OpenCore-Legacy-Patcher/tree/main/payloads/Kexts)
 
 
