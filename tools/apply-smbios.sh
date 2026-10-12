@@ -77,8 +77,11 @@ if [ -z "$MACSERIAL" ]; then
 	mkdir -p "$CACHE"
 	ZIP="$CACHE/OpenCore-$OC_VERSION-RELEASE.zip"
 	if [ ! -f "$ZIP" ]; then
-		curl -fsSL --retry 3 --max-time 300 -o "$ZIP" \
+		# Renamed when whole, so an interrupted download is never
+		# mistaken for the archive.
+		curl -fsSL --retry 3 --max-time 300 -o "$ZIP.part" \
 			"https://github.com/acidanthera/OpenCorePkg/releases/download/$OC_VERSION/OpenCore-$OC_VERSION-RELEASE.zip"
+		mv "$ZIP.part" "$ZIP"
 	fi
 	rm -rf "$CACHE/oc-$OC_VERSION"
 	mkdir -p "$CACHE/oc-$OC_VERSION"

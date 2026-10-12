@@ -56,10 +56,27 @@ for e in cfg["Kernel"]["Add"]:
         sub = e.get(key) or ""
         if sub:
             exists(os.path.join(base, sub), f"Kext {bundle} {label}")
+    # A kext with no executable works only through the matching rules in its
+    # Info.plist. Without any, it is injected and does nothing: an empty
+    # AppleMCEReporterDisabler let AppleIntelMCEReporter panic the machine.
+    info_path = os.path.join(oc, base, e.get("PlistPath") or "Contents/Info.plist")
+    if not (e.get("ExecutablePath") or "") and os.path.exists(info_path):
+        try:
+            info = plistlib.load(open(info_path, "rb"))
+        except Exception as err:
+            problems.append(f"Kext {bundle}: Info.plist does not parse ({err})")
+        else:
+            if not info.get("IOKitPersonalities"):
+                problems.append(
+                    f"Kext {bundle}: no executable and no IOKitPersonalities "
+                    "-- it would be injected and do nothing")
 
 # --- Drivers and Tools -------------------------------------------------
 for e in cfg["UEFI"]["Drivers"]:
-    if e.get("Enabled"):
+    if isinstance(e, str):          # OpenCore before 0.7.3: a bare file name
+        if not e.startswith("#"):
+            exists(os.path.join("Drivers", e), "Driver")
+    elif e.get("Enabled"):
         exists(os.path.join("Drivers", e["Path"]), "Driver")
 for e in cfg["Misc"]["Tools"]:
     if e.get("Enabled"):
@@ -101,7 +118,7 @@ if "com.apple.iokit.IOSkywalkFamily" in blocked:
             "WiFi: csr-active-config is 00000000 (SIP fully on); the injected "
             "kexts will be rejected. Expected 03080000.")
 
-nvram_delete = cfg["NVRAM"]["Delete"].get(
+nvram_delete = (cfg["NVRAM"].get("Delete") or cfg["NVRAM"].get("Block") or {}).get(
     "7C436110-AB2A-4BBB-A880-FE41995C9F82", [])
 for var in ("boot-args", "csr-active-config"):
     if var in cfg["NVRAM"]["Add"]["7C436110-AB2A-4BBB-A880-FE41995C9F82"] \

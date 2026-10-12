@@ -55,12 +55,18 @@ if [ ! -f "$MR" ]; then
 	mkdir -p "$CACHE"
 	ZIP="$CACHE/OpenCore-$OC_VERSION-RELEASE.zip"
 	if [ ! -f "$ZIP" ]; then
-		curl -fsSL --retry 3 --max-time 300 -o "$ZIP" \
+		# Renamed when whole, so an interrupted download is never
+		# mistaken for the archive.
+		curl -fsSL --retry 3 --max-time 300 -o "$ZIP.part" \
 			"https://github.com/acidanthera/OpenCorePkg/releases/download/$OC_VERSION/OpenCore-$OC_VERSION-RELEASE.zip"
+		mv "$ZIP.part" "$ZIP"
 	fi
 	mkdir -p "$CACHE/oc-$OC_VERSION"
 	unzip -q -o "$ZIP" "Utilities/macrecovery/*" -d "$CACHE/oc-$OC_VERSION"
 fi
+
+# Absolute: the download runs from inside it, and it is named again afterwards.
+DEST=$(CDPATH='' cd -- "$DEST" && pwd)
 
 echo "Downloading $LABEL recovery image"
 echo "  board id:    $BOARD"

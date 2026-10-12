@@ -280,16 +280,13 @@ job in either direction.
 5. Put a recovery image on the stick with `./tools/fetch-recovery.sh`
 6. Boot it
 
-[**UPGRADE-GUIDE.md**](UPGRADE-GUIDE.md) walks through the whole migration this
-repo was built for — Catalina on OpenCore 0.6.3 to Sequoia on 1.0.8 — including
-the BIOS settings, debugging and recovery.
-
 **IMPORTANT:**
 - Every machine needs its own SMBIOS for iMessage/FaceTime; the values in this repo are placeholders
 - `ROM` should be your **Ethernet** MAC, not the WiFi card's — en0 must be Ethernet for iServices
 - After any hardware swap, delete `/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist` and reboot so interfaces re-enumerate with Ethernet as en0
 - `USBPorts.kext` maps this board's ports and matches on the SMBIOS model. On a different motherboard, or with a different SMBIOS, re-map with [USBToolBox](https://github.com/USBToolBox/tool)
 - BIOS settings: Disable Fast Boot, Secure Boot, CSM, IOMMU. Enable Above 4G Decoding, XHCI Hand-off, SATA AHCI mode
+- The config also passes `npci=0x2000`. On a board that cannot leave CSM mode (a graphics card without a UEFI GOP), Above 4G Decoding alone does not prevent the hang before "PCI Configuration Begin"
 - The installer needs Ethernet: Sequoia has no Broadcom WiFi driver until the patch above is applied
 
 ## Credits

@@ -25,6 +25,7 @@ PLACEHOLDER_MLB="M0000000000000001"
 PLACEHOLDER_SERIAL="W00000000001"
 PLACEHOLDER_UUID="00000000-0000-0000-0000-000000000000"
 PLACEHOLDER_ROM_B64="ESIzRFVm"   # 11:22:33:44:55:66
+PLACEHOLDER_ROM_HEX="112233445566"
 
 [ -f "$CONFIG" ] || { echo "ERROR: no config.plist at $CONFIG" >&2; exit 1; }
 
@@ -109,7 +110,7 @@ FAIL=0
 for secret in "$REAL_MLB" "$REAL_SERIAL" "$REAL_UUID" "$REAL_ROM_B64" "$REAL_ROM_HEX"; do
 	# Skip empties and values that were already placeholders.
 	case "$secret" in
-		''|"$PLACEHOLDER_MLB"|"$PLACEHOLDER_SERIAL"|"$PLACEHOLDER_UUID"|"$PLACEHOLDER_ROM_B64") continue ;;
+		''|"$PLACEHOLDER_MLB"|"$PLACEHOLDER_SERIAL"|"$PLACEHOLDER_UUID"|"$PLACEHOLDER_ROM_B64"|"$PLACEHOLDER_ROM_HEX") continue ;;
 	esac
 	if grep -rIlF --exclude-dir=.git "$secret" "$TREE" 2>/dev/null | grep -q .; then
 		echo "  LEAK: a private value still appears in:" >&2

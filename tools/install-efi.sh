@@ -297,11 +297,17 @@ PY
 	if [ ! -x "$OCVALIDATE" ]; then
 		ZIP="$CACHE/OpenCore-$OC_VERSION-RELEASE.zip"
 		mkdir -p "$CACHE/oc-$OC_VERSION"
-		if [ -f "$ZIP" ] || curl -fsSL --retry 3 --max-time 300 -o "$ZIP" \
-			"https://github.com/acidanthera/OpenCorePkg/releases/download/$OC_VERSION/OpenCore-$OC_VERSION-RELEASE.zip"
+		# Downloaded under another name and renamed when whole, so an
+		# interrupted download is never mistaken for the archive.
+		if [ -f "$ZIP" ] || { curl -fsSL --retry 3 --max-time 300 -o "$ZIP.part" \
+			"https://github.com/acidanthera/OpenCorePkg/releases/download/$OC_VERSION/OpenCore-$OC_VERSION-RELEASE.zip" &&
+			mv "$ZIP.part" "$ZIP"; }
 		then
-			unzip -q -o "$ZIP" "Utilities/ocvalidate/*" -d "$CACHE/oc-$OC_VERSION"
-			chmod +x "$OCVALIDATE"
+			if unzip -q -o "$ZIP" "Utilities/ocvalidate/*" -d "$CACHE/oc-$OC_VERSION"; then
+				chmod +x "$OCVALIDATE"
+			else
+				rm -f "$ZIP"	# damaged: fetch it again next time
+			fi
 		fi
 	fi
 	if [ -x "$OCVALIDATE" ]; then
@@ -390,7 +396,15 @@ for d in $DIRS; do
 		exit 1
 	fi
 done
-"$REPO_ROOT/tools/verify-efi.sh" "$MP/EFI"
+if [ -n "$RESTORE" ]; then
+	# The archive is whatever was installed before, possibly an OpenCore
+	# too old for these checks. It was put back byte for byte, which is
+	# what a restore promises; the checks are for information.
+	"$REPO_ROOT/tools/verify-efi.sh" "$MP/EFI" 2>/dev/null ||
+		echo "  NOTE: tools/verify-efi.sh does not pass on the restored EFI (see above)."
+else
+	"$REPO_ROOT/tools/verify-efi.sh" "$MP/EFI"
+fi
 
 echo
 if [ -n "$RESTORE" ]; then
@@ -406,6 +420,7 @@ print(plistlib.load(open(sys.argv[1],'rb'))['PlatformInfo']['Generic']['SystemSe
 
 SMBIOS is still placeholders — iServices will not work until you run:
 
+  $([ "$MOUNTED_BY_US" -eq 1 ] && echo "sudo diskutil mount $DEV   # unmounted again when this script exits")
   ./tools/apply-smbios.sh "$MP/EFI/OC/config.plist"
 EOF
 	fi

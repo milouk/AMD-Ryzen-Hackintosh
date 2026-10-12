@@ -1667,6 +1667,10 @@
 					 -v                  = verbose mode (remove once stable)
 					 debug=0x100         = disables watchdog, prevents reboot on panic
 					 keepsyms=1          = prints symbols on kernel panic
+					 npci=0x2000         = stops the hang before "PCI Configuration Begin".
+					                       Enabling Above 4G Decoding is the usual cure, but it
+					                       is not enough on a board held in CSM mode (a GPU
+					                       without a UEFI GOP), so both are used here.
 					 alcid=1             = AppleALC layout-id (change to match your codec)
 					 shikigva=128        = AMD DRM decoder on IGPU-free MacPro7,1 (10.15 only,
 					                       inert on macOS 11+; kept for the Catalina test boot)
@@ -1682,7 +1686,7 @@
 					 PCI configuration nag switched on.
 				-->
 				<key>boot-args</key>
-				<string>-v debug=0x100 keepsyms=1 alcid=1 shikigva=128 -radcodec revpatch=pci,cpuname</string>
+				<string>debug=0x100 keepsyms=1 npci=0x2000 alcid=1 revpatch=pci,cpuname</string>
 				<!--
 					csr-active-config: 03080000 = partial SIP (was 00000000, fully enabled).
 					Bits: ALLOW_UNTRUSTED_KEXTS | ALLOW_UNRESTRICTED_FS | ALLOW_UNAPPROVED_KEXTS.
