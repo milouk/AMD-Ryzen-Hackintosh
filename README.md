@@ -59,8 +59,8 @@ Not exercised yet: sleep and wake.
 
 - Apps built on Apple's Hypervisor framework: Docker Desktop, OrbStack, UTM
   with acceleration, current VirtualBox.
-- Shut Down stops macOS but leaves the machine powered until the button is
-  held. Restart is unaffected.
+- Shut Down is intermittent: sometimes macOS stops but the machine stays
+  powered until the button is held. Restart is unaffected.
 - 3.5mm jack microphone (only USB/Bluetooth microphones work) - can be fixed with VoodooHDA but sacrifices audio quality
 - Adobe apps require [patches](https://github.com/ArtSabintsev/Adobe-CC-Fonts-Support) for AMD
 
