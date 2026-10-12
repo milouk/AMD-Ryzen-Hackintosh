@@ -34,29 +34,31 @@ with it from a recovery image and boots from the internal NVMe.
 - Audio (ALC892 via AppleALC, layout-id 1)
 - Ethernet (Realtek RTL8111), as `en0`
 - Bluetooth (BCM943602CS, with BlueToolFixup)
-- WiFi (BCM943602CS — **with the restoration kexts and the OCLP root patch, see below**)
 - GPU acceleration (RX 460 Polaris — native drivers, Metal)
 - USB (custom mapped via USBPorts.kext, keyed to the MacPro7,1 SMBIOS)
 - OpenCanopy GUI picker with BsxM1 theme
 - NVMe at full link speed with TRIM, and power management (NVMeFix)
 - CPU power management and sensors (AMDRyzenCPUPowerManagement, SMCAMDProcessor),
   GPU temperature (SMCRadeonSensors), motherboard fan speeds (SMCSuperIO)
-- Docker, through [Graft](#docker) — Apple's hypervisor does not run on AMD
 - iMessage, FaceTime, iCloud (the config is built for them: Ethernet is `en0`
   and `ROM` is its MAC)
 
 Not exercised yet: sleep and wake.
 
+## What works with an extra step
+
+- **WiFi** (BCM943602CS). Sequoia ships no driver for any Broadcom card, so
+  this EFI injects the Ventura-era networking stack and the system gets a root
+  patch, at the cost of Secure Boot and full SIP. See
+  [WiFi on Sequoia](#wifi-on-sequoia). Bluetooth needs none of this.
+- **Docker.** Apple's hypervisor does not exist for AMD CPUs, so containers
+  run through [Graft](#docker), a hypervisor of its own, with the standard
+  `docker` client.
+
 ## What is not working
 
-- **WiFi is not native on Sequoia.** Apple deleted `IO80211FamilyLegacy.kext` in
-  macOS Sequoia, which killed driver support for every Broadcom card — BCM94360,
-  BCM943602, Fenvi T919, all of them. This EFI restores it by injecting the
-  Ventura-era networking stack, at the cost of Secure Boot and full SIP. See
-  [WiFi on Sequoia](#wifi-on-sequoia) below. Bluetooth is unaffected.
-- Anything that needs Apple's Hypervisor framework — Docker Desktop, OrbStack,
-  UTM with acceleration, current VirtualBox. It does not exist for AMD CPUs.
-  Containers run through [Graft](#docker) instead.
+- Apps built on Apple's Hypervisor framework: Docker Desktop, OrbStack, UTM
+  with acceleration, current VirtualBox.
 - Shut Down stops macOS but leaves the machine powered until the button is
   held. Restart is unaffected.
 - 3.5mm jack microphone (only USB/Bluetooth microphones work) - can be fixed with VoodooHDA but sacrifices audio quality
