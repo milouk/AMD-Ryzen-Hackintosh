@@ -70,6 +70,15 @@ for e in cfg["Kernel"]["Add"]:
                 problems.append(
                     f"Kext {bundle}: no executable and no IOKitPersonalities "
                     "-- it would be injected and do nothing")
+    # AirportBrcmFixup's FakeBrcm attaches to the card and is terminated once
+    # the real driver loads. On Sequoia that detach makes IOPCIFamily reset the
+    # card, and the BCM94331's link does not come back.
+    if bundle == "AirportBrcmFixup.kext" and os.path.exists(info_path):
+        pers = plistlib.load(open(info_path, "rb")).get("IOKitPersonalities", {})
+        if any(p.get("IOClass") == "FakeBrcm" for p in pers.values()):
+            problems.append(
+                "Kext AirportBrcmFixup.kext: remove the FakeBrcm personality "
+                "-- its detach resets the card and drops its PCIe link")
 
 # --- Drivers and Tools -------------------------------------------------
 for e in cfg["UEFI"]["Drivers"]:

@@ -167,6 +167,18 @@
 				<key>built-in</key>
 				<data>AQ==</data>
 			</dict>
+			<!-- PT24, the chipset port behind the BCM94331. Its link can take longer than
+			     the 1 s macOS waits after resetting it, and the card is then dropped.
+			     Both values are milliseconds, 32-bit little-endian: 5000. -->
+			<key>PciRoot(0x0)/Pci(0x1,0x3)/Pci(0x0,0x2)/Pci(0x4,0x0)</key>
+			<dict>
+				<key>Comment</key>
+				<string>PT24 - wait longer for the BCM94331's link</string>
+				<key>wait-for-link-up</key>
+				<data>iBMAAA==</data>
+				<key>link-up-timeout</key>
+				<data>iBMAAA==</data>
+			</dict>
 		</dict>
 		<key>Delete</key>
 		<dict/>
@@ -192,6 +204,24 @@
 				<string></string>
 				<key>MinKernel</key>
 				<string>8.0.0</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>AirportBrcmFixup.kext</string>
+				<key>Comment</key>
+				<string>Broadcom WiFi fixes; its injector lets AirPortBrcmNIC drive a BCM94331</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string>Contents/MacOS/AirportBrcmFixup</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string></string>
 				<key>PlistPath</key>
 				<string>Contents/Info.plist</string>
 			</dict>
@@ -531,6 +561,24 @@
 				<true/>
 				<key>ExecutablePath</key>
 				<string>Contents/MacOS/AirPortBrcmNIC</string>
+				<key>MaxKernel</key>
+				<string></string>
+				<key>MinKernel</key>
+				<string>23.0.0</string>
+				<key>PlistPath</key>
+				<string>Contents/Info.plist</string>
+			</dict>
+			<dict>
+				<key>Arch</key>
+				<string>x86_64</string>
+				<key>BundlePath</key>
+				<string>AirportBrcmFixup.kext/Contents/PlugIns/AirPortBrcmNIC_Injector.kext</string>
+				<key>Comment</key>
+				<string>BCM94331 (pci14e4,4331) to AirPortBrcmNIC, as OCLP does for 2012 Macs</string>
+				<key>Enabled</key>
+				<true/>
+				<key>ExecutablePath</key>
+				<string></string>
 				<key>MaxKernel</key>
 				<string></string>
 				<key>MinKernel</key>
@@ -1529,7 +1577,7 @@
 			<key>TakeoffDelay</key>
 			<integer>0</integer>
 			<key>Timeout</key>
-			<integer>5</integer>
+			<integer>3</integer>
 		</dict>
 		<key>Debug</key>
 		<dict>
@@ -1576,9 +1624,12 @@
 			<data></data>
 			<key>PasswordSalt</key>
 			<data></data>
-			<!-- ScanPolicy: 0 to allow all drives including USB - needed to boot the installer stick -->
+			<!-- ScanPolicy 0x12F0303: APFS and HFS+ on SATA, NVMe, PCI and USB drives, so
+			     macOS and an installer stick still show up. It leaves out the EFI partition:
+			     with 0 the picker listed OpenCore's own BOOTx64.efi as "EFI", and booting
+			     that entry by default stops with "Failed to start image - Already started". -->
 			<key>ScanPolicy</key>
-			<integer>0</integer>
+			<integer>19858179</integer>
 			<!--
 				SecureBootModel: Disabled (was Default).
 				Apple Secure Boot refuses to boot with the downgraded Apple networking kexts

@@ -4,6 +4,7 @@
 [![macOS version](https://img.shields.io/badge/macOS-Sequoia_15-informational.svg)](https://www.apple.com/macos)
 [![OpenCore version](https://img.shields.io/badge/OpenCore-1.0.8-informational.svg)](https://github.com/acidanthera/OpenCorePkg)
 
+![About This Mac](screenshot.png)
 
 
 ## Specification
