@@ -14,7 +14,7 @@
 | ------------- | --------- |
 | CPU | AMD Ryzen 7 2700 @ 3.2GHz (8-core) |
 | Motherboard | MSI B450M Mortar Max |
-| RAM | 16GB (2 x 8GB) Crucial Ballistix @ 3200MHz |
+| RAM | 16GB (2 x 8GB) Crucial Ballistix 3200 CL16, run at 3466MHz |
 | Audio Chipset | Realtek ALC892 |
 | GPU | RX 460 (Polaris) |
 | WiFi & Bluetooth | BCM94331CD (BCM4331 — `pci14e4,4331`, 802.11n; Bluetooth 4.0 BCM20702) |
