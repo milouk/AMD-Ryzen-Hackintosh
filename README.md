@@ -17,7 +17,7 @@
 | RAM | 16GB (2 x 8GB) Crucial Ballistix @ 3200MHz |
 | Audio Chipset | Realtek ALC892 |
 | GPU | RX 460 (Polaris) |
-| WiFi & Bluetooth | BCM943602CS (BCM43602 — `pci14e4,43ba`) |
+| WiFi & Bluetooth | BCM94331CD (BCM4331 — `pci14e4,4331`, 802.11n; Bluetooth 4.0 BCM20702) |
 | Ethernet | Realtek RTL8111 (onboard 8111H) |
 | Disk | Crucial P310 500GB NVMe (M2_1, PCIe 3.0 x4) |
 
@@ -27,6 +27,8 @@
 
 **SMBIOS**: MacPro7,1
 
+**BIOS**: 2.80 (see the BIOS notes under [How to use](#how-to-use) before updating)
+
 **Status**: this is the configuration the machine runs. Sequoia was installed
 with it from a recovery image and boots from the internal NVMe.
 
@@ -34,7 +36,7 @@ with it from a recovery image and boots from the internal NVMe.
 
 - Audio (ALC892 via AppleALC, layout-id 1)
 - Ethernet (Realtek RTL8111), as `en0`
-- Bluetooth (BCM943602CS, with BlueToolFixup)
+- Bluetooth (BCM20702 on the BCM94331CD, with BlueToolFixup)
 - GPU acceleration (RX 460 Polaris — native drivers, Metal)
 - USB (custom mapped via USBPorts.kext, keyed to the MacPro7,1 SMBIOS)
 - OpenCanopy GUI picker with BsxM1 theme
@@ -48,7 +50,7 @@ Not exercised yet: sleep and wake.
 
 ## What works with an extra step
 
-- **WiFi** (BCM943602CS). Sequoia ships no driver for any Broadcom card, so
+- **WiFi** (BCM94331CD). Sequoia ships no driver for any Broadcom card, so
   this EFI injects the Ventura-era networking stack and the system gets a root
   patch, at the cost of Secure Boot and full SIP. See
   [WiFi on Sequoia](#wifi-on-sequoia). Bluetooth needs none of this.
@@ -81,8 +83,16 @@ are **not committed to this repository**:
 ```
 
 That pulls them from the [OpenCore Legacy Patcher](https://github.com/dortania/OpenCore-Legacy-Patcher)
-payloads into `EFI/OC/Kexts/`. Verified: `AirPortBrcmNIC` matches `pci14e4,43ba`,
-which is the BCM43602 chip on the BCM943602CS.
+payloads into `EFI/OC/Kexts/`. `AirPortBrcmNIC` drives the BCM43602
+(`pci14e4,43ba`) as it is. For the BCM4331 in this machine, the
+`AirPortBrcmNIC_Injector` plugin of [AirportBrcmFixup](https://github.com/acidanthera/AirportBrcmFixup)
+adds `pci14e4,4331` to its match list, as OCLP does for 2012 Macs.
+
+AirportBrcmFixup's `FakeBrcm` personality is removed from its `Info.plist`. It
+attaches to the card first and is torn down once the real driver loads; macOS
+then resets the card before the next driver matches, and the BCM4331's PCIe link
+does not come back, so WiFi showed up only on some boots. `verify-efi.sh` fails
+if the personality returns with an update.
 
 **What this costs you**, and it is already set in `config.plist`:
 
@@ -100,8 +110,9 @@ update. This is the ongoing maintenance cost of Broadcom WiFi on Sequoia. Use
 only that button in OCLP: its "Build and Install OpenCore" is for real Macs and
 would replace this bootloader.
 
-> If you would rather keep Secure Boot and full SIP: delete kext entries 15–18,
-> disable the `IOSkywalkFamily` block, set `SecureBootModel` back to `Default` and
+> If you would rather keep Secure Boot and full SIP: delete the AMFIPass,
+> IOSkywalkFamily, IO80211FamilyLegacy, AirPortBrcmNIC and AirportBrcmFixup
+> kext entries, disable the `IOSkywalkFamily` block, set `SecureBootModel` back to `Default` and
 > `csr-active-config` back to `00000000`. You keep Bluetooth and lose WiFi, and the
 > machine runs on Ethernet. An Intel AX210 with AirportItlwm is the other route —
 > native menu-bar WiFi with SIP intact, but unreliable AirDrop/Handoff/Continuity.
@@ -124,6 +135,7 @@ would replace this bootloader.
 | [BlueToolFixup](https://github.com/acidanthera/BrcmPatchRAM) | 2.7.2 | Bluetooth fix for macOS 12+ |
 | [RestrictEvents](https://github.com/acidanthera/RestrictEvents) | 1.1.6 | Suppresses MacPro7,1 PCI/RAM warnings, sets CPU name |
 | [SMCRadeonSensors](https://github.com/ChefKissInc/SMCRadeonSensors) | 2.4.0 | AMD GPU temperature monitoring |
+| [AirportBrcmFixup](https://github.com/acidanthera/AirportBrcmFixup) | 2.2.1 | Its injector plugin lets AirPortBrcmNIC drive the BCM4331; `FakeBrcm` personality removed |
 | [AMFIPass](https://github.com/dortania/OpenCore-Legacy-Patcher) † | 1.4.1 | AMFI bypass for the injected WiFi kexts |
 | IOSkywalkFamily † | 1.2.0 | Ventura build, replaces the blocked Sequoia one |
 | IO80211FamilyLegacy † | 1.0.0 | The 802.11 family Apple deleted in Sequoia |
@@ -310,8 +322,9 @@ job in either direction.
 - `ROM` should be your **Ethernet** MAC, not the WiFi card's — en0 must be Ethernet for iServices
 - After any hardware swap, delete `/Library/Preferences/SystemConfiguration/NetworkInterfaces.plist` and reboot so interfaces re-enumerate with Ethernet as en0
 - `USBPorts.kext` maps this board's ports and matches on the SMBIOS model. On a different motherboard, or with a different SMBIOS, re-map with [USBToolBox](https://github.com/USBToolBox/tool)
-- BIOS settings: Disable Fast Boot, Secure Boot, CSM, IOMMU. Enable Above 4G Decoding, XHCI Hand-off, SATA AHCI mode
-- A graphics card whose firmware has no UEFI GOP keeps the board in CSM mode whatever you set. That works: the picker is low resolution, and macOS is unaffected
+- BIOS settings: Disable Fast Boot, Secure Boot, IOMMU. Enable Above 4G Decoding, XHCI Hand-off, SATA AHCI mode, and SVM Mode for Docker. Disable CSM only if the graphics card has a UEFI GOP
+- A graphics card whose firmware has no UEFI GOP, like this RX 460, needs CSM mode. That works: the picker is low resolution, and macOS is unaffected. Boot the `UEFI OS` entry of the disk, not the plain one
+- With such a card, stay on BIOS 2.F or older. From 2.H, MSI turns Secure Boot on by default, and the board no longer falls back to CSM: there is no picture, so the setting cannot be changed without a second, newer card. The Flash BIOS Button rolls back without a picture
 - The config also passes `npci=0x2000`. On such a board Above 4G Decoding alone does not prevent the hang before "PCI Configuration Begin"
 - The installer needs Ethernet: Sequoia has no Broadcom WiFi driver until the patch above is applied
 

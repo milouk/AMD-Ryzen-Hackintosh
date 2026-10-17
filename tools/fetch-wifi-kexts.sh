@@ -82,4 +82,4 @@ if [ "$FAIL" -ne 0 ]; then
 fi
 
 echo "Done. All four bundles are in place."
-echo "AirPortBrcmNIC matches pci14e4,43ba (BCM43602) — the chip in the BCM943602CS."
+echo "AirPortBrcmNIC matches pci14e4,43ba (BCM43602); AirportBrcmFixup's injector adds pci14e4,4331 (BCM4331)."
