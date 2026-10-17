@@ -27,7 +27,7 @@
 
 **SMBIOS**: MacPro7,1
 
-**BIOS**: 2.80 (see the BIOS notes under [How to use](#how-to-use) before updating)
+**BIOS**: 2.F (see the BIOS notes under [How to use](#how-to-use) before updating)
 
 **Status**: this is the configuration the machine runs. Sequoia was installed
 with it from a recovery image and boots from the internal NVMe.

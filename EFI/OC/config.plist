@@ -1572,8 +1572,10 @@
 				 (Cmd+V verbose, Cmd+Opt+P+R reset NVRAM, Opt for picker, etc.) -->
 			<key>PollAppleHotKeys</key>
 			<true/>
+			<!-- ShowPicker: NO - boot straight into the default entry. Hold Esc (or Opt)
+				 while OpenCore starts to get the picker. -->
 			<key>ShowPicker</key>
-			<true/>
+			<false/>
 			<key>TakeoffDelay</key>
 			<integer>0</integer>
 			<key>Timeout</key>
